@@ -30,7 +30,7 @@ class RewardConfig:
 
 
 def calcola_margine(punti_squadra: int, punti_avversari: int) -> int:
-    """Compute the margin from the learner squadra perspective."""
+    """Compute the margin from the learner's team perspective."""
 
     return punti_squadra - punti_avversari
 

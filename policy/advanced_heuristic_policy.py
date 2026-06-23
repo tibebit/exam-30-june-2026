@@ -12,7 +12,7 @@ from game.rules import punti_presa, vincitore_presa
 
 @dataclass
 class AdvancedHeuristicPolicy:
-    """Squadra-aware policy for explicit presa cases."""
+    """Team-aware policy for explicit presa cases."""
 
     name: str = "advanced_heuristic"
 
@@ -70,7 +70,7 @@ class AdvancedHeuristicPolicy:
         osservazione: Osservazione,
         azioni_legali: list[Carta],
     ) -> list[Carta]:
-        """Load safe points when the squadra cannot be overtaken."""
+        """Load safe points when the team cannot be overtaken."""
 
         carte_che_salvano_presa = [
             carta
@@ -109,7 +109,7 @@ class AdvancedHeuristicPolicy:
         osservazione: Osservazione,
         azioni_legali: list[Carta],
     ) -> list[Carta]:
-        """Keep the compagno ahead while spending as little as possible."""
+        """Keep the partner ahead while spending as little as possible."""
 
         carte_che_lasciano_compagno = [
             carta
@@ -233,7 +233,7 @@ class AdvancedHeuristicPolicy:
         osservazione: Osservazione,
         carta: Carta,
     ) -> bool:
-        """Check whether the presa stays with the current squadra after the card."""
+        """Check whether the presa stays with the current team after the card."""
 
         return self._vincitore_dopo_carta(osservazione, carta) in (
             osservazione.giocatore_id,

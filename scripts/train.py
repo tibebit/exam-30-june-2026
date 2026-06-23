@@ -85,7 +85,7 @@ def main() -> None:
         scale=args.init_scale,
         name="learner",
     )
-    # The pool stores frozen learner copies used as opponents/compagno.
+    # The pool stores frozen learner copies used as opponents/partner.
     pool = SnapshotPool(
         feature_extractor=extractor,
         max_size=args.max_pool_size,
