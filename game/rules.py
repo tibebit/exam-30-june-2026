@@ -1,4 +1,4 @@
-"""Regole pure per la Briscola a 4 giocatori."""
+"""Pure rules for four-player Briscola."""
 
 from __future__ import annotations
 

@@ -12,7 +12,7 @@ from policy import BriscolaFeatureExtractor, LinearSoftmaxPolicy
 
 @dataclass(frozen=True)
 class Snapshot:
-    """Parametri congelati di una policy storica."""
+    """Frozen parameters of a historical policy."""
 
     name: str
     theta: np.ndarray
@@ -21,7 +21,7 @@ class Snapshot:
 
 @dataclass
 class SnapshotPool:
-    """Pool meccanico di snapshot storici campionabili."""
+    """Mechanical pool of sampleable historical snapshots."""
 
     feature_extractor: BriscolaFeatureExtractor
     max_size: int = 20
@@ -41,7 +41,7 @@ class SnapshotPool:
         name: str,
         update_index: int,
     ) -> None:
-        """Salva una copia congelata dei parametri della policy."""
+        """Save a frozen copy of the policy parameters."""
 
         theta = np.array(policy.theta, dtype=np.float32, copy=True)
         theta.setflags(write=False)
@@ -55,7 +55,7 @@ class SnapshotPool:
         self._trim()
 
     def sample_policy(self, rng: random.Random) -> LinearSoftmaxPolicy:
-        """Campiona uno snapshot e ricostruisce una policy indipendente."""
+        """Sample a snapshot and rebuild an independent policy."""
 
         if not self.snapshots:
             raise ValueError("Non si puo campionare da un pool vuoto")

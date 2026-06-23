@@ -1,4 +1,4 @@
-"""Carte e mazzo per la Briscola a 4 giocatori."""
+"""Cards and deck for four-player Briscola."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ FORZA_RANGO: dict[str, int] = {
 
 @dataclass(frozen=True, order=True)
 class Carta:
-    """Una carta del mazzo di Briscola."""
+    """One card from the Briscola deck."""
 
     seme: str
     rango: str
@@ -66,20 +66,20 @@ class Carta:
 
 @dataclass(frozen=True)
 class CartaGiocata:
-    """Una carta giocata pubblicamente da un giocatore."""
+    """One card publicly played by a player."""
 
     giocatore_id: int
     carta: Carta
 
 
 def crea_mazzo() -> list[Carta]:
-    """Crea un mazzo ordinato da 40 carte."""
+    """Create an ordered 40-card deck."""
 
     return [Carta(seme=seme, rango=rango) for seme in SEMI for rango in RANGHI]
 
 
 def carta_da_id(carta_id: str) -> Carta:
-    """Ricostruisce una carta da un id prodotto da ``Carta.id``."""
+    """Rebuild a card from an id produced by ``Carta.id``."""
 
     rango, separatore, seme = carta_id.partition("_di_")
     if not separatore or not seme:

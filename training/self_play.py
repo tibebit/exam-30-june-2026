@@ -16,7 +16,7 @@ from .rewards import RewardConfig
 
 @dataclass(frozen=True)
 class SelfPlayConfig:
-    """Configurazione dell'orchestratore self-play."""
+    """Configuration for the self-play orchestrator."""
 
     batch_size: int = 500
     snapshot_interval: int = 50
@@ -37,7 +37,7 @@ class SelfPlayConfig:
 
 @dataclass(frozen=True)
 class SelfPlayStats:
-    """Statistiche prodotte da un update self-play."""
+    """Statistics produced by one self-play update."""
 
     update_index: int
     train_stats: TrainStats
@@ -47,7 +47,7 @@ class SelfPlayStats:
 
 @dataclass
 class SelfPlayTrainer:
-    """Orchestra batch self-play, update REINFORCE e snapshot del learner."""
+    """Orchestrate self-play batches, REINFORCE updates, and learner snapshots."""
 
     learner: LinearSoftmaxPolicy
     pool: SnapshotPool
@@ -66,7 +66,7 @@ class SelfPlayTrainer:
             )
 
     def train_update(self) -> SelfPlayStats:
-        """Raccoglie un batch bilanciato e aggiorna solo la policy learner."""
+        """Collect a balanced batch and update only the learner policy."""
 
         episodes = [
             self._collect_training_episode(episode_index)
@@ -96,7 +96,7 @@ class SelfPlayTrainer:
         )
 
     def train(self, updates: int) -> list[SelfPlayStats]:
-        """Esegue piu' update consecutivi."""
+        """Run multiple consecutive updates."""
 
         if updates < 0:
             raise ValueError("updates deve essere non negativo")

@@ -1,4 +1,4 @@
-"""Osservazione legale di un giocatore."""
+"""Legal observation for a player."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from .cards import Carta, CartaGiocata
 
 @dataclass(frozen=True)
 class Osservazione:
-    """Informazioni legalmente disponibili a un giocatore."""
+    """Information legally available to a player."""
 
     giocatore_id: int
     compagno_id: int

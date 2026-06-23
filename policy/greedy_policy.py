@@ -12,7 +12,7 @@ from game.rules import vincitore_presa
 
 @dataclass
 class GreedyPolicy:
-    """Policy miope: prende con la carta meno costosa, altrimenti scarta."""
+    """Myopic policy: takes with the least costly card, otherwise discards."""
 
     name: str = "greedy"
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Entrypoint CLI per lanciare self-play training e salvare un checkpoint."""
+"""CLI entrypoint to run self-play training and save a checkpoint."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
-    # Permette `python scripts/train.py` senza installare il progetto come package.
+    # Allow `python scripts/train.py` without installing the project as a package.
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from policy import BriscolaFeatureExtractor, LinearSoftmaxPolicy
@@ -30,7 +30,7 @@ from training import (
 
 
 def parse_args() -> argparse.Namespace:
-    """Legge da CLI i parametri che configurano il loop di training."""
+    """Read CLI parameters that configure the training loop."""
 
     parser = argparse.ArgumentParser(
         description="Train a linear softmax Briscola policy with self-play.",
@@ -77,7 +77,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    # L'estrattore fissa ordine e numero delle feature usate dal theta.
+    # The extractor fixes the order and number of features used by theta.
     extractor = BriscolaFeatureExtractor()
     learner = LinearSoftmaxPolicy.initialize(
         feature_extractor=extractor,
@@ -85,13 +85,13 @@ def main() -> None:
         scale=args.init_scale,
         name="learner",
     )
-    # Il pool conserva copie congelate del learner usate come avversari/compagno.
+    # The pool stores frozen learner copies used as opponents/compagno.
     pool = SnapshotPool(
         feature_extractor=extractor,
         max_size=args.max_pool_size,
         keep_initial=not args.drop_initial_pool,
     )
-    # Reward e REINFORCE restano parametri visibili della run, non scelte nascoste.
+    # Reward and REINFORCE remain visible run parameters, not hidden choices.
     reward_config = RewardConfig(
         mode=args.reward_mode,
         alpha=args.reward_alpha,
@@ -122,7 +122,7 @@ def main() -> None:
 
     last_stats: SelfPlayStats | None = None
     with args.log.open("w", encoding="utf-8") as log_file:
-        # Ogni update raccoglie un batch, aggiorna il learner e scrive una riga JSONL.
+        # Each update collects a batch, updates the learner, and writes one JSONL row.
         for _ in range(args.updates):
             last_stats = trainer.train_update()
             record = stats_to_dict(last_stats)
@@ -133,7 +133,7 @@ def main() -> None:
                 "grad_norm={gradient_norm:.4f} pool={pool_size}".format(**record)
             )
 
-    # Il checkpoint salva stato e configurazione; l'evaluation resta un passaggio separato.
+    # The checkpoint saves state and configuration; evaluation stays a separate step.
     checkpoint = checkpoint_to_dict(
         args=args,
         extractor=extractor,
@@ -148,7 +148,7 @@ def main() -> None:
 
 
 def stats_to_dict(stats: SelfPlayStats) -> dict[str, Any]:
-    """Converte le metriche di un update in una riga JSONL leggibile."""
+    """Convert update metrics into a readable JSONL row."""
 
     train_stats = stats.train_stats
     return {
@@ -174,7 +174,7 @@ def checkpoint_to_dict(
     trainer: SelfPlayTrainer,
     last_stats: SelfPlayStats | None,
 ) -> dict[str, Any]:
-    """Costruisce il checkpoint finale con learner, pool e configurazione."""
+    """Build the final checkpoint with learner, pool, and configuration."""
 
     return {
         "kind": "briscola_rl_4players_training_checkpoint",

@@ -21,11 +21,11 @@ BASELINE_MODES = {"none", "batch_mean", "time_dependent"}
 
 @dataclass(frozen=True)
 class ReinforceConfig:
-    """Configurazione di un singolo update REINFORCE."""
+    """Configuration for a single REINFORCE update."""
 
     learning_rate: float = 0.01
     baseline: BaselineMode = "time_dependent"
-    # Default None: il clipping e' un iperparametro, non protocollo iniziale.
+    # Default None: clipping is a hyperparameter, not part of the initial protocol.
     max_update_norm: float | None = None
 
     def __post_init__(self) -> None:
@@ -39,7 +39,7 @@ class ReinforceConfig:
 
 @dataclass(frozen=True)
 class TrainStats:
-    """Metriche sintetiche prodotte da un update."""
+    """Synthetic metrics produced by an update."""
 
     episodes: int
     learner_decisions: int
@@ -55,7 +55,7 @@ def reinforce_update(
     episodes: list[EpisodeResult],
     config: ReinforceConfig = ReinforceConfig(),
 ) -> TrainStats:
-    """Applica un update REINFORCE da un batch di episodi gia' raccolti."""
+    """Apply one REINFORCE update from an already collected episode batch."""
 
     if not episodes:
         raise ValueError("Serve almeno un episodio per fare un update")
@@ -78,7 +78,7 @@ def reinforce_update(
                 step.osservazione,
                 step.azione,
             )
-            # Media sugli episodi: il learning rate resta riferito alle partite.
+            # Average over episodes: the learning rate stays tied to games.
             add_scaled_in_place(
                 gradient,
                 grad_log_probability,

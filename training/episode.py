@@ -25,7 +25,7 @@ MOSSE_TOTALI_PARTITA = NUMERO_GIOCATORI * MOSSE_PER_GIOCATORE
 
 @dataclass
 class TrajectoryStep:
-    """Una decisione del learner da usare nel policy gradient."""
+    """One learner decision to use in the policy gradient."""
 
     osservazione: Osservazione
     azione: Carta
@@ -35,7 +35,7 @@ class TrajectoryStep:
 
 @dataclass
 class EpisodeResult:
-    """Risultato completo di un episodio di training."""
+    """Complete result of one training episode."""
 
     steps: list[TrajectoryStep]
     rewards: list[float]
@@ -58,7 +58,7 @@ def collect_episode(
     reward_config: RewardConfig = RewardConfig(),
     greedy_non_learner: bool = False,
 ) -> EpisodeResult:
-    """Gioca una partita completa e raccoglie solo le decisioni del learner."""
+    """Play a full game and collect only the learner decisions."""
 
     valida_giocatore_id(learner_giocatore_id)
     valida_giocatore_id(primo_giocatore_id)
@@ -143,7 +143,7 @@ def _policy_per_giocatore(
     avversario_precedente_policy: Policy,
     learner_giocatore_id: int,
 ) -> dict[int, Policy]:
-    """Mappa le policy usando la distanza nel turno dal learner."""
+    """Map policies by turn distance from the learner."""
 
     return {
         learner_giocatore_id: learner_policy,

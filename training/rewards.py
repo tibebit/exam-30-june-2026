@@ -14,7 +14,7 @@ RewardMode = Literal["combined_terminal", "dense_presa"]
 
 @dataclass(frozen=True)
 class RewardConfig:
-    """Configurazione esplicita della reward di training."""
+    """Explicit training reward configuration."""
 
     mode: RewardMode = "combined_terminal"
     alpha: float = 1.0
@@ -30,13 +30,13 @@ class RewardConfig:
 
 
 def calcola_margine(punti_squadra: int, punti_avversari: int) -> int:
-    """Calcola il margine dal punto di vista della squadra del learner."""
+    """Compute the margin from the learner squadra perspective."""
 
     return punti_squadra - punti_avversari
 
 
 def calcola_segno(margine: int) -> float:
-    """Codifica vittoria, sconfitta e pareggio in un segno numerico."""
+    """Encode win, loss, and draw as a numeric sign."""
 
     if margine > 0:
         return 1.0
@@ -46,7 +46,7 @@ def calcola_segno(margine: int) -> float:
 
 
 def normalizza_margine(margine: int) -> float:
-    """Porta un margine punti sulla scala della partita completa."""
+    """Scale a point margin to the full-game range."""
 
     return float(margine) / PUNTI_TOTALI_PARTITA
 
@@ -56,7 +56,7 @@ def reward_finale(
     punti_avversari: int,
     config: RewardConfig = RewardConfig(),
 ) -> float:
-    """Calcola la reward assegnata a fine partita."""
+    """Compute the reward assigned at the end of the game."""
 
     margine = calcola_margine(punti_squadra, punti_avversari)
     segno = calcola_segno(margine)
@@ -77,7 +77,7 @@ def reward_presa(
     presa_vinta_da_squadra: bool,
     config: RewardConfig = RewardConfig(),
 ) -> float:
-    """Calcola la reward immediata quando una presa viene completata."""
+    """Compute the immediate reward when a presa is completed."""
 
     if config.mode == "combined_terminal":
         return 0.0

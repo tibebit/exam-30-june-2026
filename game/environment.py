@@ -1,4 +1,4 @@
-"""Ambiente di gioco per la Briscola a 4 giocatori."""
+"""Game environment for four-player Briscola."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ from .rules import (
 
 @dataclass(frozen=True)
 class CartaPescata:
-    """Evento di pescata osservabile senza rivelare carte coperte."""
+    """Observable pescata event that does not reveal hidden cards."""
 
     giocatore_id: int
     carta_visibile: Carta | None
@@ -34,7 +34,7 @@ class CartaPescata:
 
 @dataclass(frozen=True)
 class EventoPubblico:
-    """Evento pubblico utile per replay, log e diagnostica."""
+    """Public event useful for replays, logs, and diagnostics."""
 
     tipo: str
     giocatore_id: int | None = None
@@ -44,7 +44,7 @@ class EventoPubblico:
 
 @dataclass(frozen=True)
 class EsitoMossa:
-    """Risultato prodotto da una mossa legale."""
+    """Result produced by a legal move."""
 
     osservazione: Osservazione | None
     partita_finita: bool
@@ -60,7 +60,7 @@ class EsitoMossa:
 
 @dataclass
 class Ambiente:
-    """Stato interno e avanzamento di una partita di Briscola a 4."""
+    """Internal state and progression of a four-player Briscola game."""
 
     seed: int | None = None
     primo_giocatore_id: int = 0
