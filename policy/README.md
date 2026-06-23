@@ -24,6 +24,12 @@ All policies implement the minimal `Policy` protocol:
 - `AdvancedHeuristicPolicy`: explicit rule-based heuristic for richer team-aware
   play. It separates cases by current winner, player position in the trick, and
   trick value.
+- `PerfectHeuristicPolicy`: highly detailed rule-based heuristic. It classifies
+  cards into specific categories (e.g., liscio, punticini, carico, taglietto)
+  and evaluates the best card to play using strict priority lists. The decision
+  tree considers 6 main scenarios, branching further based on who is currently
+  winning, the player's position in the trick (1st, 2nd, 3rd, or 4th), and the
+  points or specific cards already on the table.
 - `LinearSoftmaxPolicy`: learnable policy with linear action preferences and a
   stable softmax over legal cards. It supports stochastic sampling and greedy
   argmax selection.
