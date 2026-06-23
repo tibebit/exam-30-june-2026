@@ -14,6 +14,7 @@ from policy import (
     AdvancedHeuristicPolicy,
     GreedyPolicy,
     HeuristicPolicy,
+    PerfectHeuristicPolicy,
     Policy,
     RandomPolicy,
 )
@@ -112,6 +113,12 @@ def default_evaluation_suite() -> EvaluationSuite:
                 compagno_policy=AdvancedHeuristicPolicy(),
                 avversario_successivo_policy=AdvancedHeuristicPolicy(),
                 avversario_precedente_policy=AdvancedHeuristicPolicy(),
+            ),
+            EvaluationScenario(
+                name="advanced_partner_perfect_heuristic_opponents_eval",
+                compagno_policy=AdvancedHeuristicPolicy(),
+                avversario_successivo_policy=PerfectHeuristicPolicy(),
+                avversario_precedente_policy=PerfectHeuristicPolicy(),
             ),
         )
     )

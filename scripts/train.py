@@ -19,6 +19,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from policy import BriscolaFeatureExtractor, LinearSoftmaxPolicy
 from training import (
     BASELINE_MODES,
+    BootstrapPolicySchedule,
+    MATCHUP_SAMPLING_MODES,
     REWARD_MODES,
     ReinforceConfig,
     RewardConfig,
@@ -39,6 +41,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=40)
     parser.add_argument("--snapshot-interval", type=int, default=5)
     parser.add_argument("--max-pool-size", type=int, default=20)
+    parser.add_argument("--bootstrap-updates", type=int, default=30)
     parser.add_argument("--drop-initial-pool", action="store_true")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--learner-giocatore-id", type=int, default=0)
@@ -59,6 +62,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reward-lambda-margin", type=float, default=0.2)
     parser.add_argument("--greedy-non-learner", action="store_true")
     parser.add_argument(
+        "--matchup-sampling",
+        choices=sorted(MATCHUP_SAMPLING_MODES),
+        default="per_episode",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=PROJECT_ROOT / "experiments/results/checkpoint.json",
@@ -71,6 +79,8 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.updates <= 0:
         parser.error("--updates deve essere positivo")
+    if args.bootstrap_updates < 0:
+        parser.error("--bootstrap-updates deve essere non negativo")
     return args
 
 
@@ -108,7 +118,11 @@ def main() -> None:
         learner_giocatore_id=args.learner_giocatore_id,
         reward_config=reward_config,
         reinforce_config=reinforce_config,
+        bootstrap_schedule=BootstrapPolicySchedule(
+            bootstrap_updates=args.bootstrap_updates
+        ),
         greedy_non_learner=args.greedy_non_learner,
+        matchup_sampling=args.matchup_sampling,
     )
     trainer = SelfPlayTrainer(
         learner=learner,
@@ -198,6 +212,7 @@ def checkpoint_to_dict(
             "batch_size": args.batch_size,
             "snapshot_interval": args.snapshot_interval,
             "max_pool_size": args.max_pool_size,
+            "bootstrap_updates": args.bootstrap_updates,
             "keep_initial_pool": not args.drop_initial_pool,
             "learner_giocatore_id": args.learner_giocatore_id,
             "init_scale": args.init_scale,
@@ -208,6 +223,7 @@ def checkpoint_to_dict(
             "reward_alpha": args.reward_alpha,
             "reward_lambda_margin": args.reward_lambda_margin,
             "greedy_non_learner": args.greedy_non_learner,
+            "matchup_sampling": args.matchup_sampling,
         },
         "last_stats": stats_to_dict(last_stats) if last_stats is not None else None,
     }

@@ -14,6 +14,7 @@ from evaluation.suite import (
     evaluate_suite,
     make_evaluation_cases,
 )
+from policy import AdvancedHeuristicPolicy, PerfectHeuristicPolicy
 
 
 @dataclass
@@ -74,7 +75,27 @@ class TestEvaluationSuite(unittest.TestCase):
                 "heuristic_eval",
                 "greedy_eval",
                 "advanced_heuristic_eval",
+                "advanced_partner_perfect_heuristic_opponents_eval",
             ],
+        )
+
+    def test_default_evaluation_suite_include_tavolo_perfect_heuristic(self):
+        # The hardest benchmark uses an advanced partner and two perfect opponents.
+        suite = default_evaluation_suite()
+        scenario = suite.scenarios[-1]
+
+        self.assertEqual(
+            scenario.name,
+            "advanced_partner_perfect_heuristic_opponents_eval",
+        )
+        self.assertIsInstance(scenario.compagno_policy, AdvancedHeuristicPolicy)
+        self.assertIsInstance(
+            scenario.avversario_successivo_policy,
+            PerfectHeuristicPolicy,
+        )
+        self.assertIsInstance(
+            scenario.avversario_precedente_policy,
+            PerfectHeuristicPolicy,
         )
 
     def test_evaluate_learner_scenario_mappa_i_ruoli_dal_learner(self):

@@ -7,6 +7,7 @@ from .episode import (
     TrajectoryStep,
     collect_episode,
 )
+from .bootstrap import BootstrapPolicySchedule
 from .pool import Snapshot, SnapshotPool
 from .reinforce import (
     BASELINE_MODES,
@@ -24,15 +25,24 @@ from .rewards import (
     reward_finale,
     reward_presa,
 )
-from .self_play import SelfPlayConfig, SelfPlayStats, SelfPlayTrainer
+from .self_play import (
+    MATCHUP_SAMPLING_MODES,
+    MatchupSamplingMode,
+    SelfPlayConfig,
+    SelfPlayStats,
+    SelfPlayTrainer,
+)
 
 __all__ = [
     "MOSSE_PER_GIOCATORE",
     "MOSSE_TOTALI_PARTITA",
     "PUNTI_TOTALI_PARTITA",
     "BASELINE_MODES",
+    "MATCHUP_SAMPLING_MODES",
     "REWARD_MODES",
+    "BootstrapPolicySchedule",
     "EpisodeResult",
+    "MatchupSamplingMode",
     "ReinforceConfig",
     "RewardConfig",
     "Snapshot",
