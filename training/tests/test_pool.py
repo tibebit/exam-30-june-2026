@@ -102,8 +102,8 @@ class TestSnapshotPool(unittest.TestCase):
         with self.assertRaises(ValueError):
             SnapshotPool(feature_extractor=extractor, max_size=0)
 
-    def test_retention_conserva_initial_e_recenti(self):
-        # Minimal retention keeps initial and the most recent snapshots.
+    def test_retention_opzionale_conserva_initial_e_recenti(self):
+        # keep_initial=True preserves initial plus the most recent snapshots.
         extractor = BriscolaFeatureExtractor(feature_names=["carta_asso"])
         pool = SnapshotPool(feature_extractor=extractor, max_size=4, keep_initial=True)
 
@@ -119,10 +119,10 @@ class TestSnapshotPool(unittest.TestCase):
             ["initial", "snapshot_3", "snapshot_4", "snapshot_5"],
         )
 
-    def test_retention_senza_initial_conserva_solo_recenti(self):
-        # If keep_initial is false, the pool simply keeps the latest snapshots.
+    def test_retention_default_conserva_solo_recenti(self):
+        # By default, the pool simply keeps the latest snapshots.
         extractor = BriscolaFeatureExtractor(feature_names=["carta_asso"])
-        pool = SnapshotPool(feature_extractor=extractor, max_size=3, keep_initial=False)
+        pool = SnapshotPool(feature_extractor=extractor, max_size=3)
 
         for index in range(5):
             pool.add_policy(
@@ -137,9 +137,9 @@ class TestSnapshotPool(unittest.TestCase):
         )
 
     def test_retention_non_ha_logica_di_score(self):
-        # The minimal pool keeps initial+recent snapshots, without evaluation fields.
+        # The minimal pool keeps recent snapshots, without evaluation fields.
         extractor = BriscolaFeatureExtractor(feature_names=["carta_asso"])
-        pool = SnapshotPool(feature_extractor=extractor, max_size=3, keep_initial=True)
+        pool = SnapshotPool(feature_extractor=extractor, max_size=3)
 
         pool.add_policy(policy_con_theta([0.0], extractor, "initial"), "initial", 0)
         pool.add_policy(policy_con_theta([1.0], extractor, "old"), "old", 1)
@@ -148,7 +148,7 @@ class TestSnapshotPool(unittest.TestCase):
 
         self.assertEqual(
             [snapshot.name for snapshot in pool.snapshots],
-            ["initial", "recent_2", "recent_3"],
+            ["old", "recent_2", "recent_3"],
         )
         self.assertFalse(hasattr(pool.snapshots[0], "evaluation_score"))
 

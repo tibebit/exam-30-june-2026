@@ -45,7 +45,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--snapshot-interval", type=int, default=5)
     parser.add_argument("--max-pool-size", type=int, default=20)
     parser.add_argument("--bootstrap-updates", type=int, default=0)
-    parser.add_argument("--drop-initial-pool", action="store_true")
+    parser.add_argument("--keep-initial-pool", action="store_true")
+    parser.add_argument(
+        "--drop-initial-pool",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--learner-giocatore-id", type=int, default=0)
     parser.add_argument(
@@ -95,6 +100,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--hidden-size deve essere positivo")
     if args.entropy_coef < 0.0:
         parser.error("--entropy-coef deve essere non negativo")
+    if args.keep_initial_pool and args.drop_initial_pool:
+        parser.error("--keep-initial-pool e --drop-initial-pool sono incompatibili")
     return args
 
 
@@ -108,7 +115,7 @@ def main() -> None:
     pool = SnapshotPool(
         feature_extractor=extractor,
         max_size=args.max_pool_size,
-        keep_initial=not args.drop_initial_pool,
+        keep_initial=args.keep_initial_pool,
     )
     # Reward and REINFORCE remain visible run parameters, not hidden choices.
     reward_config = RewardConfig(
@@ -277,7 +284,7 @@ def checkpoint_to_dict(
             "snapshot_interval": args.snapshot_interval,
             "max_pool_size": args.max_pool_size,
             "bootstrap_updates": args.bootstrap_updates,
-            "keep_initial_pool": not args.drop_initial_pool,
+            "keep_initial_pool": args.keep_initial_pool,
             "learner_giocatore_id": args.learner_giocatore_id,
             "policy_type": args.policy_type,
             "hidden_size": args.hidden_size,

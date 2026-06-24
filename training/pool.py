@@ -31,7 +31,7 @@ class SnapshotPool:
 
     feature_extractor: BriscolaFeatureExtractor
     max_size: int = 20
-    keep_initial: bool = True
+    keep_initial: bool = False
     snapshots: list[Snapshot] = field(default_factory=list)
 
     def __post_init__(self) -> None:
