@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pretty-print a decision diagnostics JSON report."""
+"""Print a decision diagnostics JSON report."""
 
 from __future__ import annotations
 

@@ -86,6 +86,48 @@
       white-space: nowrap;
     }
 
+    .scoreboard {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .score-pill {
+      width: 138px;
+      height: 42px;
+      padding: 0 12px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+      border: 2px solid rgba(255, 211, 77, 0.78);
+      border-radius: 14px;
+      background: linear-gradient(#8d5a25, #573116);
+      color: white;
+      box-shadow: inset 0 2px rgba(255,255,255,0.16), 0 2px 4px rgba(0,0,0,0.35);
+      text-shadow: 0 1px 1px rgba(0,0,0,0.4);
+    }
+
+    .score-pill span {
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.84);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .score-pill strong {
+      min-width: 34px;
+      text-align: right;
+      font-size: 25px;
+      line-height: 1;
+      font-weight: 950;
+      color: var(--gold);
+    }
+
     .actions {
       display: flex;
       gap: 8px;
@@ -266,32 +308,6 @@
       color: var(--gold);
       font-size: 20px;
       line-height: 1;
-    }
-
-    .player-score {
-      position: absolute;
-      min-width: 82px;
-      height: 42px;
-      display: grid;
-      place-items: center;
-      border-radius: 18px;
-      background: linear-gradient(#8d5a25, #573116);
-      border: 2px solid rgba(255, 211, 77, 0.75);
-      font-size: 28px;
-      font-weight: 900;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.32);
-    }
-
-    .top-score {
-      top: 18px;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    .bottom-score {
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
     }
 
     .turn-badge {
@@ -734,6 +750,15 @@
         flex-wrap: wrap;
       }
 
+      .scoreboard {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .score-pill {
+        width: 132px;
+      }
+
       .table {
         min-height: 760px;
         height: calc(100vh - 112px);
@@ -788,7 +813,16 @@
     <div class="brand">Briscola RL</div>
     <div class="status">
       <div class="pill" id="turnPill">Load JSON</div>
-      <div class="pill" id="scorePill">0 - 0</div>
+      <div class="scoreboard" aria-label="Current score">
+        <div class="score-pill">
+          <span>Team</span>
+          <strong id="teamScoreValue">0</strong>
+        </div>
+        <div class="score-pill">
+          <span>Opponents</span>
+          <strong id="opponentScoreValue">0</strong>
+        </div>
+      </div>
       <button class="round-button" id="prevTop" title="Previous decision">&larr;</button>
       <button class="round-button" id="nextTop" title="Next decision">&rarr;</button>
     </div>
@@ -805,8 +839,6 @@
     <button class="nav-arrow prev" id="prevSide" title="Previous decision">&lsaquo;</button>
     <button class="nav-arrow next" id="nextSide" title="Next decision">&rsaquo;</button>
 
-    <div class="player-score top-score" id="topScore">0</div>
-    <div class="player-score bottom-score" id="bottomScore">0</div>
     <div class="turn-badge turn-top" id="badge2">P2 partner</div>
     <div class="turn-badge turn-left" id="badge1">P1 opponent</div>
     <div class="turn-badge turn-right" id="badge3">P3 opponent</div>
@@ -871,13 +903,12 @@
       fileInput: document.getElementById("fileInput"),
       handsToggle: document.getElementById("handsToggle"),
       turnPill: document.getElementById("turnPill"),
-      scorePill: document.getElementById("scorePill"),
+      teamScoreValue: document.getElementById("teamScoreValue"),
+      opponentScoreValue: document.getElementById("opponentScoreValue"),
       prevTop: document.getElementById("prevTop"),
       nextTop: document.getElementById("nextTop"),
       prevSide: document.getElementById("prevSide"),
       nextSide: document.getElementById("nextSide"),
-      topScore: document.getElementById("topScore"),
-      bottomScore: document.getElementById("bottomScore"),
       badges: [
         document.getElementById("badge0"),
         document.getElementById("badge1"),
@@ -1003,12 +1034,12 @@
       const ourTeam = state.ourPlayer % 2 === 0 ? "pari" : "dispari";
       const opponentTeam = ourTeam === "pari" ? "dispari" : "pari";
       const finalScore = log.punteggi_finali;
+      const currentScore = record.outcome?.punteggi || { pari: 0, dispari: 0 };
 
       els.stepRange.value = String(state.index);
       els.turnPill.textContent = owner === "OUR TURN" ? "YOUR TURN" : owner.toUpperCase();
-      els.scorePill.textContent = `${obs.punteggio_squadra} - ${obs.punteggio_avversari}`;
-      els.topScore.textContent = obs.punteggio_avversari;
-      els.bottomScore.textContent = obs.punteggio_squadra;
+      els.teamScoreValue.textContent = currentScore[ourTeam] ?? 0;
+      els.opponentScoreValue.textContent = currentScore[opponentTeam] ?? 0;
       els.deckCount.textContent = obs.carte_nel_mazzo;
       els.briscolaCard.innerHTML = "";
       els.briscolaCard.appendChild(cardElement(record.briscola_esposta, { small: true, briscola: true }));
@@ -1026,9 +1057,8 @@
 
     function renderEmpty() {
       els.turnPill.textContent = "Load JSON";
-      els.scorePill.textContent = "0 - 0";
-      els.topScore.textContent = "0";
-      els.bottomScore.textContent = "0";
+      els.teamScoreValue.textContent = "0";
+      els.opponentScoreValue.textContent = "0";
       els.deckCount.textContent = "-";
       els.briscolaCard.innerHTML = "";
       els.pariPile.innerHTML = "";

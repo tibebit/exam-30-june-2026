@@ -89,6 +89,18 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--max-update-norm", type=float, default=None)
     parser.add_argument("--entropy-coef", type=float, default=0.0)
+    neural_baseline_group = parser.add_mutually_exclusive_group()
+    neural_baseline_group.add_argument(
+        "--neural-learned-baseline",
+        dest="neural_learned_baseline",
+        action="store_true",
+        default=None,
+    )
+    neural_baseline_group.add_argument(
+        "--no-neural-learned-baseline",
+        dest="neural_learned_baseline",
+        action="store_false",
+    )
     parser.add_argument(
         "--reward-mode",
         choices=sorted(REWARD_MODES),
@@ -134,6 +146,12 @@ def parse_args() -> argparse.Namespace:
         parser.error("--hidden-size deve essere positivo")
     if args.entropy_coef < 0.0:
         parser.error("--entropy-coef deve essere non negativo")
+    if args.policy_type == "neural":
+        args.neural_learned_baseline = args.neural_learned_baseline is not False
+    elif args.neural_learned_baseline is True:
+        parser.error("--neural-learned-baseline richiede --policy-type neural")
+    else:
+        args.neural_learned_baseline = False
     if args.keep_initial_pool and args.drop_initial_pool:
         parser.error("--keep-initial-pool e --drop-initial-pool sono incompatibili")
     if args.best_checkpoint_interval < 0:
@@ -178,6 +196,7 @@ def main() -> None:
         ),
         greedy_non_learner=args.greedy_non_learner,
         matchup_sampling=args.matchup_sampling,
+        neural_learned_baseline=args.neural_learned_baseline,
     )
     trainer = SelfPlayTrainer(
         learner=learner,
@@ -265,6 +284,8 @@ def main() -> None:
             )
             if record.get("mean_entropy") is not None:
                 message += " entropy={mean_entropy:.4f}"
+            if record.get("mean_value_loss") is not None:
+                message += " value_loss={mean_value_loss:.4f}"
             if record.get("best_checkpoint_score") is not None:
                 message += " best_score={best_checkpoint_score:.2f}"
                 if record.get("best_checkpoint_updated"):
@@ -310,6 +331,8 @@ def stats_to_dict(stats: SelfPlayStats) -> dict[str, Any]:
     }
     if train_stats.mean_entropy is not None:
         record["mean_entropy"] = train_stats.mean_entropy
+    if train_stats.mean_value_loss is not None:
+        record["mean_value_loss"] = train_stats.mean_value_loss
     return record
 
 
@@ -492,6 +515,7 @@ def checkpoint_to_dict(
             "baseline": args.baseline,
             "max_update_norm": args.max_update_norm,
             "entropy_coef": args.entropy_coef,
+            "neural_learned_baseline": args.neural_learned_baseline,
             "reward_mode": args.reward_mode,
             "reward_alpha": args.reward_alpha,
             "reward_lambda_margin": args.reward_lambda_margin,

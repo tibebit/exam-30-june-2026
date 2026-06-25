@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import numpy as np
 
+from policy import BriscolaFeatureExtractor, NeuralSoftmaxPolicy
 from training.bootstrap import BootstrapPolicySchedule
 from training.episode import EpisodeResult
 from training.reinforce import ReinforceConfig, TrainStats
@@ -103,6 +104,7 @@ class TestSelfPlayConfig(unittest.TestCase):
         self.assertEqual(config.bootstrap_schedule.bootstrap_updates, 0)
         self.assertFalse(config.greedy_non_learner)
         self.assertEqual(config.matchup_sampling, "per_episode")
+        self.assertIsNone(config.neural_learned_baseline)
 
     def test_config_rifiuta_valori_illegali(self):
         # Fail fast on batch, snapshot interval, and player id.
@@ -196,6 +198,112 @@ class TestSelfPlayTrainer(unittest.TestCase):
             self.assertIs(call.kwargs["reward_config"], reward_config)
             self.assertTrue(call.kwargs["greedy_non_learner"])
         self.assertIs(reinforce.call_args.args[2], reinforce_config)
+
+    def test_value_baseline_neurale_passa_solo_al_update_neural(self):
+        # Learned value baselines are an optional neural-only training component.
+        extractor = BriscolaFeatureExtractor()
+        learner = NeuralSoftmaxPolicy.initialize(
+            extractor,
+            rng=random.Random(0),
+            hidden_size=4,
+        )
+        pool = FakePool(snapshots=[FakePolicy("initial")])
+        config = SelfPlayConfig(
+            batch_size=4,
+            snapshot_interval=99,
+            neural_learned_baseline=True,
+        )
+
+        with (
+            patch("training.self_play.collect_episode", return_value=episodio_finto()),
+            patch(
+                "training.self_play.neural_reinforce_update",
+                return_value=stats_finte(4),
+            ) as neural_update,
+        ):
+            trainer = SelfPlayTrainer(  # type: ignore[arg-type]
+                learner=learner,
+                pool=pool,
+                config=config,
+                seed=123,
+            )
+            trainer.train_update()
+
+        self.assertIsNotNone(trainer.neural_value_baseline)
+        self.assertIsNotNone(trainer.neural_value_optimizer)
+        self.assertIs(
+            neural_update.call_args.kwargs["value_baseline"],
+            trainer.neural_value_baseline,
+        )
+        self.assertIs(
+            neural_update.call_args.kwargs["value_optimizer"],
+            trainer.neural_value_optimizer,
+        )
+
+    def test_value_baseline_neurale_default_auto(self):
+        # Neural learners use the learned value baseline by default.
+        extractor = BriscolaFeatureExtractor()
+        learner = NeuralSoftmaxPolicy.initialize(
+            extractor,
+            rng=random.Random(1),
+            hidden_size=4,
+        )
+        pool = FakePool(snapshots=[FakePolicy("initial")])
+        config = SelfPlayConfig(batch_size=4, snapshot_interval=99)
+
+        with (
+            patch("training.self_play.collect_episode", return_value=episodio_finto()),
+            patch(
+                "training.self_play.neural_reinforce_update",
+                return_value=stats_finte(4),
+            ) as neural_update,
+        ):
+            trainer = SelfPlayTrainer(  # type: ignore[arg-type]
+                learner=learner,
+                pool=pool,
+                config=config,
+                seed=123,
+            )
+            trainer.train_update()
+
+        self.assertIsNotNone(trainer.neural_value_baseline)
+        self.assertIs(
+            neural_update.call_args.kwargs["value_baseline"],
+            trainer.neural_value_baseline,
+        )
+
+    def test_value_baseline_neurale_puo_essere_disattivata(self):
+        # Explicit opt-out keeps ablations comparable to the previous neural path.
+        extractor = BriscolaFeatureExtractor()
+        learner = NeuralSoftmaxPolicy.initialize(
+            extractor,
+            rng=random.Random(2),
+            hidden_size=4,
+        )
+        pool = FakePool(snapshots=[FakePolicy("initial")])
+        config = SelfPlayConfig(
+            batch_size=4,
+            snapshot_interval=99,
+            neural_learned_baseline=False,
+        )
+
+        with (
+            patch("training.self_play.collect_episode", return_value=episodio_finto()),
+            patch(
+                "training.self_play.neural_reinforce_update",
+                return_value=stats_finte(4),
+            ) as neural_update,
+        ):
+            trainer = SelfPlayTrainer(  # type: ignore[arg-type]
+                learner=learner,
+                pool=pool,
+                config=config,
+                seed=123,
+            )
+            trainer.train_update()
+
+        self.assertIsNone(trainer.neural_value_baseline)
+        self.assertIsNone(neural_update.call_args.kwargs["value_baseline"])
 
     def test_snapshot_viene_aggiunto_solo_all_intervallo_configurato(self):
         # The pool grows only when update_index reaches snapshot_interval.

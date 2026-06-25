@@ -9,7 +9,7 @@ from .episode import (
 )
 from .bootstrap import BootstrapPolicySchedule
 from .pool import Snapshot, SnapshotPool
-from .neural_reinforce import neural_reinforce_update
+from .neural_reinforce import NeuralValueBaseline, neural_reinforce_update
 from .reinforce import (
     BASELINE_MODES,
     ReinforceConfig,
@@ -45,6 +45,7 @@ __all__ = [
     "BootstrapPolicySchedule",
     "EpisodeResult",
     "MatchupSamplingMode",
+    "NeuralValueBaseline",
     "ReinforceConfig",
     "RewardConfig",
     "Snapshot",

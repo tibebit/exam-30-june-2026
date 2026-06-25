@@ -96,9 +96,10 @@ class TrainStats:
     mean_return: float
     mean_score_margin: float
     gradient_norm: float
-    baseline: BaselineMode
+    baseline: str
     baseline_values: tuple[float, ...]
     mean_entropy: float | None = None
+    mean_value_loss: float | None = None
 
 
 def reinforce_update(

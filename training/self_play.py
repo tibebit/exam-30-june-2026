@@ -13,7 +13,7 @@ from policy import NeuralSoftmaxPolicy, Policy
 
 from .bootstrap import BootstrapPolicySchedule
 from .episode import EpisodeResult, collect_episode
-from .neural_reinforce import neural_reinforce_update
+from .neural_reinforce import NeuralValueBaseline, neural_reinforce_update
 from .pool import SnapshotPool
 from .reinforce import ReinforceConfig, TrainStats, TrainablePolicy, reinforce_update
 from .rewards import RewardConfig
@@ -46,6 +46,7 @@ class SelfPlayConfig:
     )
     greedy_non_learner: bool = False
     matchup_sampling: MatchupSamplingMode = "per_episode"
+    neural_learned_baseline: bool | None = None
 
     def __post_init__(self) -> None:
         if self.batch_size <= 0:
@@ -80,6 +81,8 @@ class SelfPlayTrainer:
     update_index: int = 0
     master_rng: random.Random = field(init=False)
     neural_optimizer: torch.optim.Optimizer | None = field(init=False, default=None)
+    neural_value_baseline: NeuralValueBaseline | None = field(init=False, default=None)
+    neural_value_optimizer: torch.optim.Optimizer | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
         self.master_rng = random.Random(self.seed)
@@ -87,6 +90,20 @@ class SelfPlayTrainer:
             self.neural_optimizer = torch.optim.Adam(
                 self.learner.parameters(),
                 lr=self.config.reinforce_config.learning_rate,
+            )
+            if self.config.neural_learned_baseline is not False:
+                self.neural_value_baseline = NeuralValueBaseline.initialize(
+                    feature_extractor=self.learner.feature_extractor,
+                    rng=random.Random(self.seed + 1_000_003),
+                    hidden_size=self.learner.hidden_size,
+                )
+                self.neural_value_optimizer = torch.optim.Adam(
+                    self.neural_value_baseline.parameters(),
+                    lr=self.config.reinforce_config.learning_rate,
+                )
+        elif self.config.neural_learned_baseline is True:
+            raise ValueError(
+                "neural_learned_baseline richiede una NeuralSoftmaxPolicy"
             )
         if len(self.pool) == 0:
             self.pool.add_policy(
@@ -110,6 +127,8 @@ class SelfPlayTrainer:
                 episodes,
                 self.config.reinforce_config,
                 optimizer=self.neural_optimizer,
+                value_baseline=self.neural_value_baseline,
+                value_optimizer=self.neural_value_optimizer,
             )
         else:
             train_stats = reinforce_update(

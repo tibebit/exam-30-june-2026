@@ -9,7 +9,7 @@ from game.cards import Carta
 from game.observation import Osservazione
 from policy import BriscolaFeatureExtractor, NeuralSoftmaxPolicy
 from training.episode import EpisodeResult, TrajectoryStep
-from training.neural_reinforce import neural_reinforce_update
+from training.neural_reinforce import NeuralValueBaseline, neural_reinforce_update
 from training.reinforce import ReinforceConfig
 
 
@@ -57,6 +57,15 @@ def episodio(reward_to_go: float) -> EpisodeResult:
         learner_squadra="pari",
         episode_return=reward_to_go,
     )
+
+
+def flat_parameters(module) -> np.ndarray:
+    return np.concatenate(
+        [
+            parameter.detach().cpu().numpy().reshape(-1)
+            for parameter in module.parameters()
+        ]
+    ).astype(np.float32)
 
 
 class TestNeuralReinforceUpdate(unittest.TestCase):
@@ -125,6 +134,34 @@ class TestNeuralReinforceUpdate(unittest.TestCase):
 
         self.assertTrue(np.allclose(without_entropy.theta, before_without))
         self.assertFalse(np.allclose(with_entropy.theta, before_with))
+
+    def test_learned_value_baseline_viene_aggiornata(self):
+        # The learned baseline is trained as a value estimator, separate from the policy.
+        extractor = BriscolaFeatureExtractor()
+        policy = NeuralSoftmaxPolicy.initialize(
+            extractor,
+            rng=random.Random(3),
+            hidden_size=4,
+        )
+        value_baseline = NeuralValueBaseline.initialize(
+            extractor,
+            rng=random.Random(4),
+            hidden_size=4,
+        )
+        before_value = flat_parameters(value_baseline)
+
+        stats = neural_reinforce_update(
+            policy,
+            [episodio(2.0)],
+            ReinforceConfig(learning_rate=0.01, baseline="none"),
+            value_baseline=value_baseline,
+        )
+
+        self.assertEqual(stats.baseline, "learned_value")
+        self.assertEqual(stats.baseline_values, ())
+        self.assertIsNotNone(stats.mean_value_loss)
+        self.assertGreater(stats.mean_value_loss, 0.0)
+        self.assertFalse(np.allclose(flat_parameters(value_baseline), before_value))
 
     def test_episodi_vuoti_solleva_value_error(self):
         # Neural updates need at least one collected episode.
