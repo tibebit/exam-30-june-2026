@@ -25,6 +25,84 @@ MAX_CARTE_IN_MANO = 3
 FIGURE = {"re", "cavallo", "fante"}
 CARICHI = {"asso", "tre"}
 
+DEFAULT_ATOMIC_FEATURE_NAMES: tuple[str, ...] = (
+    "punti_carta",
+    "forza_carta",
+    "carta_briscola",
+    "carta_asso",
+    "carta_tre",
+    "carta_figura",
+    "carta_carico",
+    "carta_liscia",
+    "carta_rischiosa",
+    "posizione_primo",
+    "posizione_secondo",
+    "posizione_terzo",
+    "posizione_quarto",
+    "carte_nella_presa",
+    "punti_presa",
+    "compagno_sta_prendendo",
+    "avversario_sta_prendendo",
+    "carta_prende",
+    "carta_supera_compagno",
+    "carta_supera_avversario",
+    "giocatori_dopo",
+    "avversari_dopo",
+    "compagno_deve_giocare",
+    "avversario_deve_giocare",
+    "mano_compagno_visibile",
+    "punti_mano_compagno",
+    "briscole_mano_compagno",
+    "carichi_mano_compagno",
+    "compagno_ha_briscola",
+    "compagno_ha_carico",
+    "compagno_puo_prendere",
+    "carte_giocate",
+    "briscole_giocate",
+    "briscole_non_osservate",
+    "briscola_esposta_pescata",
+    "briscola_esposta_non_giocata",
+    "briscola_esposta_mia",
+    "briscola_esposta_compagno",
+    "briscola_esposta_avversario",
+    "assi_giocati",
+    "tre_giocati",
+    "carichi_giocati",
+    "figure_giocate",
+    "superiori_stesso_seme_non_osservate",
+    "briscole_che_battono_non_osservate",
+    "punteggio_squadra",
+    "punteggio_avversari",
+    "differenza_punteggio",
+    "squadra_avanti",
+    "squadra_indietro",
+    "carte_nel_mazzo",
+    "fase_iniziale",
+    "fase_media",
+    "fase_finale",
+    "mazzo_vuoto",
+    "ultime_prese",
+)
+
+DEFAULT_INTERACTION_FEATURE_NAMES: tuple[str, ...] = (
+    "briscola_x_punti_presa",
+    "briscola_x_avversario_sta_prendendo",
+    "briscola_x_compagno_sta_prendendo",
+    "compagno_sta_prendendo_x_punti_carta",
+    "carta_prende_x_punti_presa",
+    "vantaggio_x_fase_finale",
+    "svantaggio_x_fase_finale",
+    "avversari_dopo_x_carta_rischiosa",
+    "compagno_puo_prendere_x_punti_carta",
+    "compagno_ha_briscola_x_avversario_sta_prendendo",
+    "mazzo_vuoto_x_carico",
+    "mazzo_vuoto_x_briscola",
+)
+
+DEFAULT_FEATURE_NAMES: tuple[str, ...] = (
+    DEFAULT_ATOMIC_FEATURE_NAMES + DEFAULT_INTERACTION_FEATURE_NAMES
+)
+
 
 @dataclass
 class BriscolaFeatureExtractor:
@@ -40,6 +118,20 @@ class BriscolaFeatureExtractor:
         """Return the feature vector size."""
 
         return len(self.feature_names)
+
+    @property
+    def atomic_feature_names(self) -> tuple[str, ...]:
+        """Return the active non-interaction feature names."""
+
+        atomic_names = set(DEFAULT_ATOMIC_FEATURE_NAMES)
+        return tuple(name for name in self.feature_names if name in atomic_names)
+
+    @property
+    def interaction_feature_names(self) -> tuple[str, ...]:
+        """Return the active engineered interaction feature names."""
+
+        interaction_names = set(DEFAULT_INTERACTION_FEATURE_NAMES)
+        return tuple(name for name in self.feature_names if name in interaction_names)
 
     def extract(self, osservazione: Osservazione, carta: Carta) -> list[float]:
         """Extract legal-observation features for one candidate card."""
@@ -242,76 +334,7 @@ class BriscolaFeatureExtractor:
         return [float(values[name]) for name in self.feature_names]
 
     def _default_feature_names(self) -> list[str]:
-        return [
-            "punti_carta",
-            "forza_carta",
-            "carta_briscola",
-            "carta_asso",
-            "carta_tre",
-            "carta_figura",
-            "carta_carico",
-            "carta_liscia",
-            "carta_rischiosa",
-            "posizione_primo",
-            "posizione_secondo",
-            "posizione_terzo",
-            "posizione_quarto",
-            "carte_nella_presa",
-            "punti_presa",
-            "compagno_sta_prendendo",
-            "avversario_sta_prendendo",
-            "carta_prende",
-            "carta_supera_compagno",
-            "carta_supera_avversario",
-            "giocatori_dopo",
-            "avversari_dopo",
-            "compagno_deve_giocare",
-            "avversario_deve_giocare",
-            "mano_compagno_visibile",
-            "punti_mano_compagno",
-            "briscole_mano_compagno",
-            "carichi_mano_compagno",
-            "compagno_ha_briscola",
-            "compagno_ha_carico",
-            "compagno_puo_prendere",
-            "carte_giocate",
-            "briscole_giocate",
-            "briscole_non_osservate",
-            "briscola_esposta_pescata",
-            "briscola_esposta_non_giocata",
-            "briscola_esposta_mia",
-            "briscola_esposta_compagno",
-            "briscola_esposta_avversario",
-            "assi_giocati",
-            "tre_giocati",
-            "carichi_giocati",
-            "figure_giocate",
-            "superiori_stesso_seme_non_osservate",
-            "briscole_che_battono_non_osservate",
-            "punteggio_squadra",
-            "punteggio_avversari",
-            "differenza_punteggio",
-            "squadra_avanti",
-            "squadra_indietro",
-            "carte_nel_mazzo",
-            "fase_iniziale",
-            "fase_media",
-            "fase_finale",
-            "mazzo_vuoto",
-            "ultime_prese",
-            "briscola_x_punti_presa",
-            "briscola_x_avversario_sta_prendendo",
-            "briscola_x_compagno_sta_prendendo",
-            "compagno_sta_prendendo_x_punti_carta",
-            "carta_prende_x_punti_presa",
-            "vantaggio_x_fase_finale",
-            "svantaggio_x_fase_finale",
-            "avversari_dopo_x_carta_rischiosa",
-            "compagno_puo_prendere_x_punti_carta",
-            "compagno_ha_briscola_x_avversario_sta_prendendo",
-            "mazzo_vuoto_x_carico",
-            "mazzo_vuoto_x_briscola",
-        ]
+        return list(DEFAULT_FEATURE_NAMES)
 
     def _vincitore_corrente(self, osservazione: Osservazione) -> int | None:
         if not osservazione.carte_sul_campo:

@@ -5,6 +5,11 @@ import unittest
 from game.cards import Carta, CartaGiocata
 from game.observation import Osservazione
 from policy import BriscolaFeatureExtractor
+from policy.features import (
+    DEFAULT_ATOMIC_FEATURE_NAMES,
+    DEFAULT_FEATURE_NAMES,
+    DEFAULT_INTERACTION_FEATURE_NAMES,
+)
 
 
 def osservazione(
@@ -74,6 +79,27 @@ class TestBriscolaFeatureExtractor(unittest.TestCase):
         values = extractor.extract(obs, obs.mano[0])
 
         self.assertTrue(all(isinstance(value, float) for value in values))
+
+    def test_feature_groups_are_explicit_and_cover_default_vector(self):
+        # Atomiche e interazioni devono coprire tutto il vettore senza duplicati.
+        extractor = BriscolaFeatureExtractor()
+
+        self.assertEqual(extractor.feature_names, list(DEFAULT_FEATURE_NAMES))
+        self.assertEqual(extractor.atomic_feature_names, DEFAULT_ATOMIC_FEATURE_NAMES)
+        self.assertEqual(
+            extractor.interaction_feature_names,
+            DEFAULT_INTERACTION_FEATURE_NAMES,
+        )
+        self.assertEqual(len(extractor.atomic_feature_names), 56)
+        self.assertEqual(len(extractor.interaction_feature_names), 12)
+        self.assertEqual(
+            len(extractor.feature_names),
+            len(set(extractor.feature_names)),
+        )
+        self.assertEqual(
+            extractor.feature_names,
+            list(extractor.atomic_feature_names + extractor.interaction_feature_names),
+        )
 
     def test_carta_non_legale_solleva_value_error(self):
         # Features are defined only for legal actions in the current hand.
@@ -252,6 +278,26 @@ class TestBriscolaFeatureExtractor(unittest.TestCase):
         self.assertEqual(feature(extractor, values, "mazzo_vuoto"), 1.0)
         self.assertEqual(feature(extractor, values, "fase_finale"), 1.0)
         self.assertEqual(feature(extractor, values, "ultime_prese"), 1.0)
+
+    def test_feature_interazione_e_prodotto_delle_componenti(self):
+        # Le interazioni engineered devono restare prodotti numerici espliciti.
+        extractor = BriscolaFeatureExtractor()
+        carta = Carta("denari", "due")
+        obs = osservazione(
+            mano=(carta,),
+            carte_sul_campo=(
+                CartaGiocata(giocatore_id=1, carta=Carta("coppe", "asso")),
+                CartaGiocata(giocatore_id=2, carta=Carta("bastoni", "tre")),
+            ),
+        )
+
+        values = extractor.extract(obs, carta)
+
+        self.assertAlmostEqual(
+            feature(extractor, values, "briscola_x_punti_presa"),
+            feature(extractor, values, "carta_briscola")
+            * feature(extractor, values, "punti_presa"),
+        )
 
 
 if __name__ == "__main__":
