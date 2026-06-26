@@ -122,6 +122,15 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=PROJECT_ROOT / "experiments/results/train_log.jsonl",
     )
+    parser.add_argument(
+        "--snapshot-output-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional directory where every learner snapshot is saved as an "
+            "evaluate.py-compatible checkpoint."
+        ),
+    )
     parser.add_argument("--best-checkpoint-interval", type=int, default=0)
     parser.add_argument("--best-checkpoint-games", type=int, default=100)
     parser.add_argument(
@@ -207,6 +216,7 @@ def main() -> None:
     best_output = default_best_checkpoint_path(args)
     best_checkpoint_summary: dict[str, Any] | None = None
     best_checkpoint_score: float | None = None
+    snapshot_manifest_path = prepare_snapshot_archive(args)
     if args.best_checkpoint_interval > 0:
         if best_output.resolve() == args.output.resolve():
             raise ValueError(
@@ -222,6 +232,29 @@ def main() -> None:
     else:
         best_suite = None
         best_cases = None
+
+    archived_updates: set[int] = set()
+    if snapshot_manifest_path is not None:
+        snapshot_path = write_archived_learner_checkpoint(
+            args=args,
+            extractor=extractor,
+            learner=learner,
+            pool=pool,
+            trainer=trainer,
+            last_stats=None,
+            kind="initial",
+            name="initial",
+        )
+        append_snapshot_manifest(
+            manifest_path=snapshot_manifest_path,
+            checkpoint_path=snapshot_path,
+            kind="initial",
+            name="initial",
+            update_index=0,
+            stats=None,
+            args=args,
+        )
+        archived_updates.add(0)
 
     last_stats: SelfPlayStats | None = None
     with args.log.open("w", encoding="utf-8") as log_file:
@@ -273,6 +306,30 @@ def main() -> None:
                         encoding="utf-8",
                     )
 
+            if snapshot_manifest_path is not None and last_stats.snapshot_added:
+                snapshot_name = f"snapshot_{last_stats.update_index}"
+                snapshot_path = write_archived_learner_checkpoint(
+                    args=args,
+                    extractor=extractor,
+                    learner=learner,
+                    pool=pool,
+                    trainer=trainer,
+                    last_stats=last_stats,
+                    kind="snapshot",
+                    name=snapshot_name,
+                )
+                append_snapshot_manifest(
+                    manifest_path=snapshot_manifest_path,
+                    checkpoint_path=snapshot_path,
+                    kind="snapshot",
+                    name=snapshot_name,
+                    update_index=last_stats.update_index,
+                    stats=last_stats,
+                    args=args,
+                )
+                record["snapshot_checkpoint_path"] = str(snapshot_path)
+                archived_updates.add(last_stats.update_index)
+
             log_file.write(json.dumps(record) + "\n")
             message = (
                 "update={update_index} episodes={episodes} "
@@ -305,6 +362,32 @@ def main() -> None:
     )
     args.output.write_text(json.dumps(checkpoint, indent=2), encoding="utf-8")
     print(f"saved_checkpoint={args.output}")
+    if (
+        snapshot_manifest_path is not None
+        and last_stats is not None
+        and last_stats.update_index not in archived_updates
+    ):
+        final_path = write_archived_learner_checkpoint(
+            args=args,
+            extractor=extractor,
+            learner=learner,
+            pool=pool,
+            trainer=trainer,
+            last_stats=last_stats,
+            kind="final",
+            name=f"final_{last_stats.update_index}",
+        )
+        append_snapshot_manifest(
+            manifest_path=snapshot_manifest_path,
+            checkpoint_path=final_path,
+            kind="final",
+            name=f"final_{last_stats.update_index}",
+            update_index=last_stats.update_index,
+            stats=last_stats,
+            args=args,
+        )
+    if snapshot_manifest_path is not None:
+        print(f"saved_snapshot_manifest={snapshot_manifest_path}")
     if best_checkpoint_summary is not None:
         print(f"saved_best_checkpoint={best_output}")
     print(f"saved_log={args.log}")
@@ -388,6 +471,100 @@ def snapshot_to_dict(snapshot: Any) -> dict[str, Any]:
     if snapshot.hidden_size is not None:
         payload["hidden_size"] = snapshot.hidden_size
     return payload
+
+
+def prepare_snapshot_archive(args: argparse.Namespace) -> Path | None:
+    """Create the optional chronological learner-snapshot archive."""
+
+    if args.snapshot_output_dir is None:
+        return None
+
+    args.snapshot_output_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = args.snapshot_output_dir / "snapshot_manifest.jsonl"
+    manifest_path.write_text("", encoding="utf-8")
+    return manifest_path
+
+
+def archive_checkpoint_path(
+    *,
+    snapshot_output_dir: Path,
+    kind: str,
+    update_index: int,
+) -> Path:
+    """Return a stable path for one archived learner checkpoint."""
+
+    return snapshot_output_dir / f"update_{update_index:06d}_{kind}.json"
+
+
+def write_archived_learner_checkpoint(
+    *,
+    args: argparse.Namespace,
+    extractor: BriscolaFeatureExtractor | NewFeatureSetExtractor,
+    learner: LinearSoftmaxPolicy | NeuralSoftmaxPolicy,
+    pool: SnapshotPool,
+    trainer: SelfPlayTrainer,
+    last_stats: SelfPlayStats | None,
+    kind: str,
+    name: str,
+) -> Path:
+    """Save one learner checkpoint that can be evaluated independently."""
+
+    if args.snapshot_output_dir is None:
+        raise ValueError("snapshot_output_dir non configurata")
+
+    checkpoint_path = archive_checkpoint_path(
+        snapshot_output_dir=args.snapshot_output_dir,
+        kind=kind,
+        update_index=trainer.update_index,
+    )
+    checkpoint = checkpoint_to_dict(
+        args=args,
+        extractor=extractor,
+        learner=learner,
+        pool=pool,
+        trainer=trainer,
+        last_stats=last_stats,
+        include_pool=False,
+    )
+    checkpoint["archived_snapshot"] = {
+        "kind": kind,
+        "name": name,
+        "update_index": trainer.update_index,
+    }
+    checkpoint_path.write_text(json.dumps(checkpoint, indent=2), encoding="utf-8")
+    return checkpoint_path
+
+
+def append_snapshot_manifest(
+    *,
+    manifest_path: Path,
+    checkpoint_path: Path,
+    kind: str,
+    name: str,
+    update_index: int,
+    stats: SelfPlayStats | None,
+    args: argparse.Namespace,
+) -> None:
+    """Append one chronological archive entry for later batch evaluation."""
+
+    record: dict[str, Any] = {
+        "kind": kind,
+        "name": name,
+        "update_index": update_index,
+        "checkpoint_path": str(checkpoint_path),
+        "policy_type": args.policy_type,
+        "feature_set": args.feature_set,
+    }
+    if stats is not None:
+        record.update(
+            {
+                "mean_return": stats.train_stats.mean_return,
+                "mean_score_margin": stats.train_stats.mean_score_margin,
+                "pool_size": stats.pool_size,
+            }
+        )
+    with manifest_path.open("a", encoding="utf-8") as manifest_file:
+        manifest_file.write(json.dumps(record) + "\n")
 
 
 def default_best_checkpoint_path(args: argparse.Namespace) -> Path:
@@ -486,6 +663,7 @@ def checkpoint_to_dict(
     last_stats: SelfPlayStats | None,
     best_checkpoint_summary: dict[str, Any] | None = None,
     best_checkpoint_path: Path | None = None,
+    include_pool: bool = True,
 ) -> dict[str, Any]:
     """Build the final checkpoint with learner, pool, and configuration."""
 
@@ -495,7 +673,6 @@ def checkpoint_to_dict(
         "seed": args.seed,
         "feature_names": list(extractor.feature_names),
         "learner": learner_to_dict(learner),
-        "pool": [snapshot_to_dict(snapshot) for snapshot in pool.snapshots],
         "config": {
             "updates": args.updates,
             "batch_size": args.batch_size,
@@ -530,9 +707,16 @@ def checkpoint_to_dict(
                 if args.best_checkpoint_interval > 0
                 else None
             ),
+            "snapshot_output_dir": (
+                str(args.snapshot_output_dir)
+                if args.snapshot_output_dir is not None
+                else None
+            ),
         },
         "last_stats": stats_to_dict(last_stats) if last_stats is not None else None,
     }
+    if include_pool:
+        checkpoint["pool"] = [snapshot_to_dict(snapshot) for snapshot in pool.snapshots]
     if best_checkpoint_summary is not None:
         checkpoint["best_checkpoint"] = {
             "path": str(best_checkpoint_path),
