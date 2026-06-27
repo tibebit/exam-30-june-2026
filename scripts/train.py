@@ -34,7 +34,7 @@ from policy import (
 )
 from training import (
     BASELINE_MODES,
-    BootstrapPolicySchedule,
+    WarmStartPolicySchedule,
     MATCHUP_SAMPLING_MODES,
     REWARD_MODES,
     ReinforceConfig,
@@ -59,7 +59,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=40)
     parser.add_argument("--snapshot-interval", type=int, default=5)
     parser.add_argument("--max-pool-size", type=int, default=20)
-    parser.add_argument("--bootstrap-updates", type=int, default=0)
+    parser.add_argument("--warm-start-updates", type=int, default=0)
     parser.add_argument("--keep-initial-pool", action="store_true")
     parser.add_argument(
         "--drop-initial-pool",
@@ -147,8 +147,8 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.updates <= 0:
         parser.error("--updates deve essere positivo")
-    if args.bootstrap_updates < 0:
-        parser.error("--bootstrap-updates deve essere non negativo")
+    if args.warm_start_updates < 0:
+        parser.error("--warm-start-updates deve essere non negativo")
     if args.hidden_size <= 0:
         parser.error("--hidden-size deve essere positivo")
     if args.entropy_coef < 0.0:
@@ -197,8 +197,8 @@ def main() -> None:
         learner_giocatore_id=args.learner_giocatore_id,
         reward_config=reward_config,
         reinforce_config=reinforce_config,
-        bootstrap_schedule=BootstrapPolicySchedule(
-            bootstrap_updates=args.bootstrap_updates,
+        warm_start_schedule=WarmStartPolicySchedule(
+            warm_start_updates=args.warm_start_updates,
         ),
         greedy_non_learner=args.greedy_non_learner,
         matchup_sampling=args.matchup_sampling,
@@ -678,7 +678,7 @@ def checkpoint_to_dict(
             "batch_size": args.batch_size,
             "snapshot_interval": args.snapshot_interval,
             "max_pool_size": args.max_pool_size,
-            "bootstrap_updates": args.bootstrap_updates,
+            "warm_start_updates": args.warm_start_updates,
             "keep_initial_pool": args.keep_initial_pool,
             "learner_giocatore_id": args.learner_giocatore_id,
             "feature_set": args.feature_set,

@@ -8,7 +8,7 @@ from unittest.mock import patch
 import numpy as np
 
 from policy import BriscolaFeatureExtractor, NeuralSoftmaxPolicy
-from training.bootstrap import BootstrapPolicySchedule
+from training.warm_start import WarmStartPolicySchedule
 from training.episode import EpisodeResult
 from training.reinforce import ReinforceConfig, TrainStats
 from training.rewards import RewardConfig
@@ -50,21 +50,21 @@ class FakePool:
 
 
 @dataclass
-class FakeBootstrapSchedule:
-    bootstrap_updates: int = 30
+class FakeWarmStartSchedule:
+    warm_start_updates: int = 30
     shared_sample: FakePolicy | None = field(
-        default_factory=lambda: FakePolicy("bootstrap")
+        default_factory=lambda: FakePolicy("warm_start")
     )
     sample_calls: int = 0
 
     def active(self, update_index: int) -> bool:
-        return update_index < self.bootstrap_updates
+        return update_index < self.warm_start_updates
 
     def sample_policy(self, rng: random.Random) -> FakePolicy:
         self.sample_calls += 1
         if self.shared_sample is not None:
             return self.shared_sample
-        return FakePolicy(name=f"bootstrap_{self.sample_calls}")
+        return FakePolicy(name=f"warm_start_{self.sample_calls}")
 
 
 def episodio_finto() -> EpisodeResult:
@@ -100,8 +100,8 @@ class TestSelfPlayConfig(unittest.TestCase):
         self.assertEqual(config.learner_giocatore_id, 0)
         self.assertIsInstance(config.reward_config, RewardConfig)
         self.assertIsInstance(config.reinforce_config, ReinforceConfig)
-        self.assertIsInstance(config.bootstrap_schedule, BootstrapPolicySchedule)
-        self.assertEqual(config.bootstrap_schedule.bootstrap_updates, 0)
+        self.assertIsInstance(config.warm_start_schedule, WarmStartPolicySchedule)
+        self.assertEqual(config.warm_start_schedule.warm_start_updates, 0)
         self.assertFalse(config.greedy_non_learner)
         self.assertEqual(config.matchup_sampling, "per_episode")
         self.assertIsNone(config.neural_learned_baseline)
@@ -389,15 +389,15 @@ class TestSelfPlayTrainer(unittest.TestCase):
             self.assertIs(call.kwargs["avversario_successivo_policy"], shared_policy)
             self.assertIs(call.kwargs["avversario_precedente_policy"], shared_policy)
 
-    def test_bootstrap_viene_usato_nei_primi_update(self):
+    def test_warm_start_viene_usato_nei_primi_update(self):
         # Early updates can use fixed baseline policies instead of self-play snapshots.
         learner = FakePolicy("learner")
         pool = FakePool(snapshots=[FakePolicy("initial")])
-        bootstrap_schedule = FakeBootstrapSchedule()
+        warm_start_schedule = FakeWarmStartSchedule()
         config = SelfPlayConfig(
             batch_size=4,
             snapshot_interval=99,
-            bootstrap_schedule=bootstrap_schedule,  # type: ignore[arg-type]
+            warm_start_schedule=warm_start_schedule,  # type: ignore[arg-type]
         )
 
         with (
@@ -412,17 +412,17 @@ class TestSelfPlayTrainer(unittest.TestCase):
             )
             trainer.train_update()
 
-        self.assertEqual(bootstrap_schedule.sample_calls, 12)
+        self.assertEqual(warm_start_schedule.sample_calls, 12)
         self.assertEqual(pool.sample_calls, 0)
         for call in collect.call_args_list:
-            self.assertIs(call.kwargs["compagno_policy"], bootstrap_schedule.shared_sample)
+            self.assertIs(call.kwargs["compagno_policy"], warm_start_schedule.shared_sample)
             self.assertIs(
                 call.kwargs["avversario_successivo_policy"],
-                bootstrap_schedule.shared_sample,
+                warm_start_schedule.shared_sample,
             )
             self.assertIs(
                 call.kwargs["avversario_precedente_policy"],
-                bootstrap_schedule.shared_sample,
+                warm_start_schedule.shared_sample,
             )
 
     def test_pool_viene_campionato_tre_volte_per_blocco_di_rotazione(self):
@@ -478,15 +478,15 @@ class TestSelfPlayTrainer(unittest.TestCase):
                 "sample_6",
             )
 
-    def test_bootstrap_viene_campionato_per_blocco_di_rotazione(self):
-        # Bootstrap and rotation blocks compose: one baseline trio is reused for four games.
+    def test_warm_start_viene_campionato_per_blocco_di_rotazione(self):
+        # Warm-start and rotation blocks compose: one baseline trio is reused for four games.
         learner = FakePolicy("learner")
         pool = FakePool(snapshots=[FakePolicy("initial")])
-        bootstrap_schedule = FakeBootstrapSchedule(shared_sample=None)
+        warm_start_schedule = FakeWarmStartSchedule(shared_sample=None)
         config = SelfPlayConfig(
             batch_size=8,
             snapshot_interval=99,
-            bootstrap_schedule=bootstrap_schedule,  # type: ignore[arg-type]
+            warm_start_schedule=warm_start_schedule,  # type: ignore[arg-type]
             matchup_sampling="per_rotation_block",
         )
 
@@ -502,7 +502,7 @@ class TestSelfPlayTrainer(unittest.TestCase):
             )
             trainer.train_update()
 
-        self.assertEqual(bootstrap_schedule.sample_calls, 6)
+        self.assertEqual(warm_start_schedule.sample_calls, 6)
         self.assertEqual(pool.sample_calls, 0)
         self.assertEqual(
             [
@@ -515,24 +515,24 @@ class TestSelfPlayTrainer(unittest.TestCase):
         first_block = collect.call_args_list[:4]
         second_block = collect.call_args_list[4:]
         for call in first_block:
-            self.assertEqual(call.kwargs["compagno_policy"].name, "bootstrap_1")
+            self.assertEqual(call.kwargs["compagno_policy"].name, "warm_start_1")
             self.assertEqual(
                 call.kwargs["avversario_successivo_policy"].name,
-                "bootstrap_2",
+                "warm_start_2",
             )
             self.assertEqual(
                 call.kwargs["avversario_precedente_policy"].name,
-                "bootstrap_3",
+                "warm_start_3",
             )
         for call in second_block:
-            self.assertEqual(call.kwargs["compagno_policy"].name, "bootstrap_4")
+            self.assertEqual(call.kwargs["compagno_policy"].name, "warm_start_4")
             self.assertEqual(
                 call.kwargs["avversario_successivo_policy"].name,
-                "bootstrap_5",
+                "warm_start_5",
             )
             self.assertEqual(
                 call.kwargs["avversario_precedente_policy"].name,
-                "bootstrap_6",
+                "warm_start_6",
             )
 
     def test_train_esegue_piu_update_e_rifiuta_valore_negativo(self):

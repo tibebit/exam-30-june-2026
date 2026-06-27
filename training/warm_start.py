@@ -1,4 +1,4 @@
-"""Bootstrap policy schedule for early Briscola training."""
+"""Warm-start policy schedule for early Briscola training."""
 
 from __future__ import annotations
 
@@ -13,24 +13,24 @@ PolicyFactory = Callable[[], Policy]
 
 
 @dataclass(frozen=True)
-class BootstrapPolicySchedule:
+class WarmStartPolicySchedule:
     """Sample fixed baseline policies during the initial training updates."""
 
-    bootstrap_updates: int = 0
+    warm_start_updates: int = 0
     policy_factories: tuple[PolicyFactory, ...] = field(
         default_factory=lambda: (RandomPolicy, GreedyPolicy, HeuristicPolicy)
     )
 
     def __post_init__(self) -> None:
-        if self.bootstrap_updates < 0:
-            raise ValueError("bootstrap_updates must be non-negative")
+        if self.warm_start_updates < 0:
+            raise ValueError("warm_start_updates must be non-negative")
         if not self.policy_factories:
-            raise ValueError("At least one bootstrap policy factory is required")
+            raise ValueError("At least one warm-start policy factory is required")
 
     def active(self, update_index: int) -> bool:
-        """Return whether bootstrap policies should be used for this update."""
+        """Return whether warm-start policies should be used for this update."""
 
-        return update_index < self.bootstrap_updates
+        return update_index < self.warm_start_updates
 
     def sample_policy(self, rng: random.Random) -> Policy:
         """Sample one fresh baseline policy instance."""

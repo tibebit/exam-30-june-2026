@@ -11,7 +11,7 @@ import torch
 from game.rules import NUMERO_GIOCATORI, valida_giocatore_id
 from policy import NeuralSoftmaxPolicy, Policy
 
-from .bootstrap import BootstrapPolicySchedule
+from .warm_start import WarmStartPolicySchedule
 from .episode import EpisodeResult, collect_episode
 from .neural_reinforce import NeuralValueBaseline, neural_reinforce_update
 from .pool import SnapshotPool
@@ -41,8 +41,8 @@ class SelfPlayConfig:
     learner_giocatore_id: int = 0
     reward_config: RewardConfig = field(default_factory=RewardConfig)
     reinforce_config: ReinforceConfig = field(default_factory=ReinforceConfig)
-    bootstrap_schedule: BootstrapPolicySchedule = field(
-        default_factory=BootstrapPolicySchedule
+    warm_start_schedule: WarmStartPolicySchedule = field(
+        default_factory=WarmStartPolicySchedule
     )
     greedy_non_learner: bool = False
     matchup_sampling: MatchupSamplingMode = "per_episode"
@@ -219,6 +219,6 @@ class SelfPlayTrainer:
         )
 
     def _sample_non_learner_policy(self) -> Policy:
-        if self.config.bootstrap_schedule.active(self.update_index):
-            return self.config.bootstrap_schedule.sample_policy(self.master_rng)
+        if self.config.warm_start_schedule.active(self.update_index):
+            return self.config.warm_start_schedule.sample_policy(self.master_rng)
         return self.pool.sample_policy(self.master_rng)
