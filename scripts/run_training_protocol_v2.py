@@ -42,6 +42,25 @@ POLICY_TYPES = ("linear", "neural")
 DEFAULT_POLICY_TYPES = ("linear",)
 DEFAULT_HIDDEN_SIZES = (64,)
 
+NEURAL_CALIBRATION_LEARNING_RATES = ("0.0003", "0.001", "0.003")
+NEURAL_CALIBRATION_HIDDEN_SIZES = (32, 64)
+NEURAL_COMMON_FEATURE_SET = "common_atomic"
+NEURAL_FEATURE_SETS = ("common_atomic", "base_aligned", "new_aligned")
+NEURAL_WARM_START_UPDATES = (30,)
+NEURAL_MATCHUP_SAMPLINGS = ("per_rotation_block",)
+NEURAL_REWARD_MODE = "combined_terminal"
+NEURAL_REWARD_PRESET = "current_baseline"
+NEURAL_ENTROPY_COEF = "0.0"
+
+LEGACY_PHASES = (
+    "stress_lr",
+    "dense_presa_probe",
+    "pilot_combined",
+    "series_combined",
+    "reward_combined",
+    "dense_presa",
+)
+
 # Current fixed condition for representation ablations. CLI options can
 # override one axis deliberately, but the defaults remain explicit here.
 CONSOLIDATED_LEARNING_RATES = ("0.9",)
@@ -78,6 +97,7 @@ class RunConfig:
     snapshot_interval: int = 5
     max_pool_size: int = 20
     init_scale: str = "0.01"
+    entropy_coef: str = "0.0"
     hidden_size: int | None = None
     neural_learned_baseline: bool = True
 
@@ -90,6 +110,31 @@ class FeatureComparisonPhase:
     batch_size: int
     updates: int
     evaluation_games: int
+
+
+@dataclass(frozen=True)
+class NeuralProtocolPhase:
+    """One ordered phase of the neural training protocol."""
+
+    feature_sets: tuple[str, ...]
+    learning_rates: tuple[str, ...]
+    hidden_sizes: tuple[int, ...]
+    learned_baselines: tuple[bool, ...]
+    batch_size: int
+    updates: int
+    evaluation_games: int
+    reward_mode: str = NEURAL_REWARD_MODE
+    reward_presets: tuple[str, ...] = (NEURAL_REWARD_PRESET,)
+    require_learning_rate: bool = False
+    require_hidden_size: bool = False
+    require_feature_set: bool = False
+    require_learned_baseline: bool = False
+    require_reward_preset: bool = False
+    require_single_learning_rate: bool = False
+    require_single_hidden_size: bool = False
+    require_single_feature_set: bool = False
+    require_single_reward_preset: bool = False
+    compare_learned_baselines: bool = False
 
 
 # These phases keep the common atomic representation fixed. They compare only
@@ -106,6 +151,151 @@ FEATURE_COMPARISON_PHASES = {
         batch_size=300,
         updates=500,
         evaluation_games=1000,
+    ),
+}
+
+
+# Neural phases change one family of choices at a time. Adam learning rate and
+# hidden size are calibrated together; every later phase requires that choice.
+NEURAL_PROTOCOL_PHASES = {
+    "neural_calibration_light": NeuralProtocolPhase(
+        feature_sets=(NEURAL_COMMON_FEATURE_SET,),
+        learning_rates=NEURAL_CALIBRATION_LEARNING_RATES,
+        hidden_sizes=NEURAL_CALIBRATION_HIDDEN_SIZES,
+        learned_baselines=(True,),
+        batch_size=180,
+        updates=300,
+        evaluation_games=500,
+    ),
+    "neural_calibration_intensive": NeuralProtocolPhase(
+        feature_sets=(NEURAL_COMMON_FEATURE_SET,),
+        learning_rates=(),
+        hidden_sizes=(),
+        learned_baselines=(True,),
+        batch_size=300,
+        updates=500,
+        evaluation_games=1000,
+        require_learning_rate=True,
+        require_hidden_size=True,
+        require_single_learning_rate=True,
+        require_single_hidden_size=True,
+        compare_learned_baselines=True,
+    ),
+    "neural_value_baseline_ablation": NeuralProtocolPhase(
+        feature_sets=(NEURAL_COMMON_FEATURE_SET,),
+        learning_rates=(),
+        hidden_sizes=(),
+        learned_baselines=(True, False),
+        batch_size=300,
+        updates=500,
+        evaluation_games=1000,
+        require_learning_rate=True,
+        require_hidden_size=True,
+        require_single_learning_rate=True,
+        require_single_hidden_size=True,
+    ),
+    "neural_features_light": NeuralProtocolPhase(
+        feature_sets=NEURAL_FEATURE_SETS,
+        learning_rates=(),
+        hidden_sizes=(),
+        learned_baselines=(True, False),
+        batch_size=180,
+        updates=300,
+        evaluation_games=500,
+        require_learning_rate=True,
+        require_hidden_size=True,
+        require_learned_baseline=True,
+        require_single_learning_rate=True,
+        require_single_hidden_size=True,
+    ),
+    "neural_features_intensive": NeuralProtocolPhase(
+        feature_sets=NEURAL_FEATURE_SETS,
+        learning_rates=(),
+        hidden_sizes=(),
+        learned_baselines=(True, False),
+        batch_size=300,
+        updates=500,
+        evaluation_games=1000,
+        require_learning_rate=True,
+        require_hidden_size=True,
+        require_feature_set=True,
+        require_learned_baseline=True,
+        require_single_learning_rate=True,
+        require_single_hidden_size=True,
+        require_single_feature_set=True,
+    ),
+    "neural_reward_combined_light": NeuralProtocolPhase(
+        feature_sets=NEURAL_FEATURE_SETS,
+        learning_rates=(),
+        hidden_sizes=(),
+        learned_baselines=(True, False),
+        batch_size=180,
+        updates=300,
+        evaluation_games=500,
+        reward_presets=tuple(REWARD_PRESETS),
+        require_learning_rate=True,
+        require_hidden_size=True,
+        require_feature_set=True,
+        require_learned_baseline=True,
+        require_single_learning_rate=True,
+        require_single_hidden_size=True,
+        require_single_feature_set=True,
+    ),
+    "neural_reward_combined_intensive": NeuralProtocolPhase(
+        feature_sets=NEURAL_FEATURE_SETS,
+        learning_rates=(),
+        hidden_sizes=(),
+        learned_baselines=(True, False),
+        batch_size=300,
+        updates=500,
+        evaluation_games=1000,
+        reward_presets=tuple(REWARD_PRESETS),
+        require_learning_rate=True,
+        require_hidden_size=True,
+        require_feature_set=True,
+        require_learned_baseline=True,
+        require_reward_preset=True,
+        require_single_learning_rate=True,
+        require_single_hidden_size=True,
+        require_single_feature_set=True,
+        require_single_reward_preset=True,
+    ),
+    "neural_dense_presa_light": NeuralProtocolPhase(
+        feature_sets=NEURAL_FEATURE_SETS,
+        learning_rates=(),
+        hidden_sizes=(),
+        learned_baselines=(True,),
+        batch_size=180,
+        updates=300,
+        evaluation_games=500,
+        reward_mode="dense_presa",
+        reward_presets=("current_baseline", "balanced"),
+        require_learning_rate=True,
+        require_hidden_size=True,
+        require_feature_set=True,
+        require_learned_baseline=True,
+        require_single_learning_rate=True,
+        require_single_hidden_size=True,
+    ),
+    "neural_dense_presa_intensive": NeuralProtocolPhase(
+        feature_sets=NEURAL_FEATURE_SETS,
+        learning_rates=(),
+        hidden_sizes=(),
+        learned_baselines=(True,),
+        batch_size=300,
+        updates=500,
+        evaluation_games=1000,
+        reward_mode="dense_presa",
+        reward_presets=("current_baseline", "balanced"),
+        require_learning_rate=True,
+        require_hidden_size=True,
+        require_feature_set=True,
+        require_learned_baseline=True,
+        require_reward_preset=True,
+        require_single_learning_rate=True,
+        require_single_hidden_size=True,
+        require_single_feature_set=True,
+        require_single_reward_preset=True,
     ),
 }
 
@@ -206,7 +396,14 @@ def train_command(config: RunConfig, python_bin: str) -> list[str]:
     if config.policy_type == "neural":
         if config.hidden_size is None:
             raise ValueError("Neural runs require hidden_size")
-        command.extend(["--hidden-size", str(config.hidden_size)])
+        command.extend(
+            [
+                "--hidden-size",
+                str(config.hidden_size),
+                "--entropy-coef",
+                config.entropy_coef,
+            ]
+        )
         if config.neural_learned_baseline:
             command.append("--neural-learned-baseline")
         else:
@@ -248,6 +445,8 @@ def cartesian(
     reward_mode: str,
     reward_presets: Iterable[str],
     feature_sets: Iterable[str] = ("base",),
+    neural_learned_baselines: Iterable[bool] = (True,),
+    entropy_coef: str = "0.0",
 ) -> list[RunConfig]:
     """Expand explicitly selected axes in a deterministic, inspectable order."""
 
@@ -266,24 +465,29 @@ def cartesian(
                             for matchup in matchup_samplings:
                                 for preset in reward_presets:
                                     alpha, lambda_margin = REWARD_PRESETS[preset]
-                                    configs.append(
-                                        RunConfig(
-                                            phase=phase,
-                                            policy_type=policy_type,
-                                            seed=seed,
-                                            batch_size=batch_size,
-                                            updates=updates,
-                                            evaluation_games=evaluation_games,
-                                            learning_rate=learning_rate,
-                                            feature_set=feature_set,
-                                            warm_start_updates=warm_start,
-                                            matchup_sampling=matchup,
-                                            reward_mode=reward_mode,
-                                            reward_alpha=alpha,
-                                            reward_lambda_margin=lambda_margin,
-                                            hidden_size=hidden_size,
+                                    for neural_learned_baseline in neural_learned_baselines:
+                                        configs.append(
+                                            RunConfig(
+                                                phase=phase,
+                                                policy_type=policy_type,
+                                                seed=seed,
+                                                batch_size=batch_size,
+                                                updates=updates,
+                                                evaluation_games=evaluation_games,
+                                                learning_rate=learning_rate,
+                                                feature_set=feature_set,
+                                                warm_start_updates=warm_start,
+                                                matchup_sampling=matchup,
+                                                reward_mode=reward_mode,
+                                                reward_alpha=alpha,
+                                                reward_lambda_margin=lambda_margin,
+                                                entropy_coef=entropy_coef,
+                                                hidden_size=hidden_size,
+                                                neural_learned_baseline=(
+                                                    neural_learned_baseline
+                                                ),
+                                            )
                                         )
-                                    )
     return configs
 
 
@@ -326,7 +530,7 @@ def selected_int_values(
 
 
 def selected_policy_types(args: argparse.Namespace) -> tuple[str, ...]:
-    """Preserve the linear default while allowing neural runs on the same grid."""
+    """Select a policy family for legacy linear protocol phases."""
 
     if args.policy_type:
         return tuple(args.policy_type)
@@ -341,13 +545,192 @@ def selected_hidden_sizes(args: argparse.Namespace) -> tuple[int, ...]:
     return tuple(args.hidden_size or DEFAULT_HIDDEN_SIZES)
 
 
+def phase_values(
+    *,
+    phase: str,
+    values: list[str] | None,
+    allowed: tuple[str, ...],
+    name: str,
+    require_explicit: bool,
+    require_single: bool,
+) -> tuple[str, ...]:
+    """Select string values for one constrained neural phase."""
+
+    if require_explicit and not values:
+        raise SystemExit(
+            f"{phase} richiede --{name.replace('_', '-')} scelto in una fase precedente",
+        )
+    selected = tuple(values or allowed)
+    if not selected:
+        raise SystemExit(f"{phase} richiede almeno un valore --{name.replace('_', '-')}")
+    if allowed and not set(selected) <= set(allowed):
+        raise SystemExit(
+            f"{phase} supporta soltanto {name}={sorted(allowed)}",
+        )
+    if require_single and len(selected) != 1:
+        raise SystemExit(f"{phase} richiede un solo --{name.replace('_', '-')}")
+    return selected
+
+
+def phase_int_values(
+    *,
+    phase: str,
+    values: list[int] | None,
+    allowed: tuple[int, ...],
+    name: str,
+    require_explicit: bool,
+    require_single: bool,
+) -> tuple[int, ...]:
+    """Select integer values for one constrained neural phase."""
+
+    if require_explicit and not values:
+        raise SystemExit(
+            f"{phase} richiede --{name.replace('_', '-')} scelto in una fase precedente",
+        )
+    selected = tuple(values or allowed)
+    if not selected:
+        raise SystemExit(f"{phase} richiede almeno un valore --{name.replace('_', '-')}")
+    if allowed and not set(selected) <= set(allowed):
+        raise SystemExit(
+            f"{phase} supporta soltanto {name}={sorted(allowed)}",
+        )
+    if require_single and len(selected) != 1:
+        raise SystemExit(f"{phase} richiede un solo --{name.replace('_', '-')}")
+    return selected
+
+
+def neural_learned_baselines(
+    *,
+    args: argparse.Namespace,
+    phase: str,
+    neural_phase: NeuralProtocolPhase,
+) -> tuple[bool, ...]:
+    """Select the learned-baseline condition without mixing ablation phases."""
+
+    requested = args.neural_learned_baseline
+    if neural_phase.compare_learned_baselines:
+        if requested is not None:
+            raise SystemExit(
+                f"{phase} confronta entrambe le learned value baseline; non usare il flag",
+            )
+        return neural_phase.learned_baselines
+    if neural_phase.require_learned_baseline and requested is None:
+        raise SystemExit(
+            f"{phase} richiede --neural-learned-baseline o --no-neural-learned-baseline",
+        )
+    selected = neural_phase.learned_baselines if requested is None else (requested,)
+    if not set(selected) <= set(neural_phase.learned_baselines):
+        raise SystemExit(
+            f"{phase} supporta soltanto learned value baseline="
+            f"{list(neural_phase.learned_baselines)}",
+        )
+    return selected
+
+
+def build_neural_configs(
+    *,
+    args: argparse.Namespace,
+    phase: str,
+    neural_phase: NeuralProtocolPhase,
+    seeds: tuple[int, ...],
+) -> list[RunConfig]:
+    """Build one neural phase while keeping unrelated axes fixed."""
+
+    if args.policy_type and set(args.policy_type) != {"neural"}:
+        raise SystemExit(f"{phase} confronta soltanto policy_type=neural")
+    if args.all:
+        raise SystemExit(f"{phase} non supporta --all")
+    if args.warm_start_updates:
+        raise SystemExit(f"{phase} mantiene warm_start_updates fisso")
+    if args.matchup_sampling:
+        raise SystemExit(f"{phase} mantiene matchup_sampling fisso")
+
+    learning_rates = phase_values(
+        phase=phase,
+        values=args.learning_rate,
+        allowed=neural_phase.learning_rates,
+        name="learning_rate",
+        require_explicit=neural_phase.require_learning_rate,
+        require_single=neural_phase.require_single_learning_rate,
+    )
+    hidden_sizes = phase_int_values(
+        phase=phase,
+        values=args.hidden_size,
+        allowed=neural_phase.hidden_sizes,
+        name="hidden_size",
+        require_explicit=neural_phase.require_hidden_size,
+        require_single=neural_phase.require_single_hidden_size,
+    )
+    feature_sets = phase_values(
+        phase=phase,
+        values=args.feature_set,
+        allowed=neural_phase.feature_sets,
+        name="feature_set",
+        require_explicit=neural_phase.require_feature_set,
+        require_single=neural_phase.require_single_feature_set,
+    )
+    reward_presets = phase_values(
+        phase=phase,
+        values=args.reward_preset,
+        allowed=neural_phase.reward_presets,
+        name="reward_preset",
+        require_explicit=neural_phase.require_reward_preset,
+        require_single=neural_phase.require_single_reward_preset,
+    )
+
+    return cartesian(
+        phase=phase,
+        seeds=seeds,
+        policy_types=("neural",),
+        hidden_sizes=hidden_sizes,
+        batch_size=neural_phase.batch_size,
+        updates=neural_phase.updates,
+        evaluation_games=(
+            None if args.skip_evaluation else neural_phase.evaluation_games
+        ),
+        learning_rates=learning_rates,
+        warm_start_updates=NEURAL_WARM_START_UPDATES,
+        matchup_samplings=NEURAL_MATCHUP_SAMPLINGS,
+        reward_mode=neural_phase.reward_mode,
+        reward_presets=reward_presets,
+        feature_sets=feature_sets,
+        neural_learned_baselines=neural_learned_baselines(
+            args=args,
+            phase=phase,
+            neural_phase=neural_phase,
+        ),
+        entropy_coef=NEURAL_ENTROPY_COEF,
+    )
+
+
 def build_configs(args: argparse.Namespace) -> list[RunConfig]:
     """Build run configs for the requested protocol phase."""
 
     seeds = tuple(args.seed or [5000])
+
+    neural_phase = NEURAL_PROTOCOL_PHASES.get(args.phase)
+    if neural_phase is not None:
+        return build_neural_configs(
+            args=args,
+            phase=args.phase,
+            neural_phase=neural_phase,
+            seeds=seeds,
+        )
+
     selected_feature_sets = tuple(args.feature_set or DEFAULT_FEATURE_SETS)
     policy_types = selected_policy_types(args)
     hidden_sizes = selected_hidden_sizes(args)
+
+    if "neural" in policy_types:
+        raise SystemExit(
+            "Usa una fase neural_*: le fasi storiche e lineari non "
+            "condividono il protocollo di Adam.",
+        )
+    if args.neural_learned_baseline is not None:
+        raise SystemExit(
+            "--neural-learned-baseline e --no-neural-learned-baseline "
+            "sono validi soltanto nelle fasi neural_*.",
+        )
 
     feature_phase = FEATURE_COMPARISON_PHASES.get(args.phase)
     if feature_phase is not None:
@@ -552,14 +935,9 @@ def main() -> None:
         "--phase",
         required=True,
         choices=(
-            "stress_lr",
-            "dense_presa_probe",
-            "feature_linear_light",
-            "pilot_combined",
-            "series_combined",
-            "feature_linear_intensive",
-            "reward_combined",
-            "dense_presa",
+            *LEGACY_PHASES,
+            *FEATURE_COMPARISON_PHASES,
+            *NEURAL_PROTOCOL_PHASES,
         ),
     )
     parser.add_argument("--execute", action="store_true")
@@ -573,7 +951,7 @@ def main() -> None:
         "--policy-type",
         action="append",
         choices=POLICY_TYPES,
-        help="Policy family to run. Repeat to compare linear and neural.",
+        help="Policy family for legacy phases; neural_* phases always use neural.",
     )
     parser.add_argument(
         "--hidden-size",
@@ -583,6 +961,20 @@ def main() -> None:
     )
     parser.add_argument("--learning-rate", action="append")
     parser.add_argument("--feature-set", action="append", choices=FEATURE_SETS)
+    neural_baseline_group = parser.add_mutually_exclusive_group()
+    neural_baseline_group.add_argument(
+        "--neural-learned-baseline",
+        dest="neural_learned_baseline",
+        action="store_true",
+        default=None,
+        help="Use the learned value baseline in a neural_* phase.",
+    )
+    neural_baseline_group.add_argument(
+        "--no-neural-learned-baseline",
+        dest="neural_learned_baseline",
+        action="store_false",
+        help="Disable the learned value baseline in a neural_* phase.",
+    )
     parser.add_argument("--warm-start-updates", action="append", type=int)
     parser.add_argument(
         "--matchup-sampling",
