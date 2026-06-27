@@ -7,7 +7,7 @@ from .episode import (
     TrajectoryStep,
     collect_episode,
 )
-from .bootstrap import BootstrapPolicySchedule
+from .warm_start import WarmStartPolicySchedule
 from .pool import Snapshot, SnapshotPool
 from .neural_reinforce import NeuralValueBaseline, neural_reinforce_update
 from .reinforce import (
@@ -42,7 +42,7 @@ __all__ = [
     "BASELINE_MODES",
     "MATCHUP_SAMPLING_MODES",
     "REWARD_MODES",
-    "BootstrapPolicySchedule",
+    "WarmStartPolicySchedule",
     "EpisodeResult",
     "MatchupSamplingMode",
     "NeuralValueBaseline",

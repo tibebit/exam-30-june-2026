@@ -30,7 +30,7 @@ from policy.feature_sets import FEATURE_SET_NAMES
 MAIN_LEARNING_RATES = ("0.003", "0.01", "0.03", "0.1")
 # Stress values start above the main grid, which already includes 0.1.
 STRESS_LEARNING_RATES = ("0.3", "0.5", "0.9")
-BOOTSTRAP_UPDATES = (0, 30)
+WARM_START_UPDATES = (0, 30)
 MATCHUP_SAMPLINGS = ("per_episode", "per_rotation_block")
 
 # Feature-set names come from the production selector so the runner cannot
@@ -45,7 +45,7 @@ DEFAULT_HIDDEN_SIZES = (64,)
 # Current fixed condition for representation ablations. CLI options can
 # override one axis deliberately, but the defaults remain explicit here.
 CONSOLIDATED_LEARNING_RATES = ("0.9",)
-CONSOLIDATED_BOOTSTRAP_UPDATES = (30,)
+CONSOLIDATED_WARM_START_UPDATES = (30,)
 CONSOLIDATED_MATCHUP_SAMPLINGS = ("per_rotation_block",)
 
 # Reward weights are named to keep reward-grid commands readable.
@@ -68,7 +68,7 @@ class RunConfig:
     updates: int
     evaluation_games: int | None
     learning_rate: str
-    bootstrap_updates: int
+    warm_start_updates: int
     matchup_sampling: str
     reward_mode: str
     reward_alpha: str
@@ -152,7 +152,7 @@ def run_directory(config: RunConfig) -> Path:
             f"_pool_size_{config.max_pool_size}"
         )
         / f"matchup_sampling_{config.matchup_sampling}"
-        / f"bootstrap_updates_{config.bootstrap_updates}"
+        / f"warm_start_updates_{config.warm_start_updates}"
         / f"seed_{config.seed}"
     )
 
@@ -189,8 +189,8 @@ def train_command(config: RunConfig, python_bin: str) -> list[str]:
         config.reward_alpha,
         "--reward-lambda-margin",
         config.reward_lambda_margin,
-        "--bootstrap-updates",
-        str(config.bootstrap_updates),
+        "--warm-start-updates",
+        str(config.warm_start_updates),
         # The v2 protocol preserves the initial learner snapshot. It stays
         # fixed rather than becoming another experimental axis in this runner.
         "--keep-initial-pool",
@@ -243,7 +243,7 @@ def cartesian(
     updates: int,
     evaluation_games: int | None,
     learning_rates: Iterable[str],
-    bootstrap_updates: Iterable[int],
+    warm_start_updates: Iterable[int],
     matchup_samplings: Iterable[str],
     reward_mode: str,
     reward_presets: Iterable[str],
@@ -262,7 +262,7 @@ def cartesian(
             for hidden_size in selected_hidden_sizes:
                 for learning_rate in learning_rates:
                     for feature_set in feature_sets:
-                        for bootstrap in bootstrap_updates:
+                        for warm_start in warm_start_updates:
                             for matchup in matchup_samplings:
                                 for preset in reward_presets:
                                     alpha, lambda_margin = REWARD_PRESETS[preset]
@@ -276,7 +276,7 @@ def cartesian(
                                             evaluation_games=evaluation_games,
                                             learning_rate=learning_rate,
                                             feature_set=feature_set,
-                                            bootstrap_updates=bootstrap,
+                                            warm_start_updates=warm_start,
                                             matchup_sampling=matchup,
                                             reward_mode=reward_mode,
                                             reward_alpha=alpha,
@@ -375,8 +375,8 @@ def build_configs(args: argparse.Namespace) -> list[RunConfig]:
                 None if args.skip_evaluation else feature_phase.evaluation_games
             ),
             learning_rates=tuple(args.learning_rate or CONSOLIDATED_LEARNING_RATES),
-            bootstrap_updates=tuple(
-                args.bootstrap_updates or CONSOLIDATED_BOOTSTRAP_UPDATES
+            warm_start_updates=tuple(
+                args.warm_start_updates or CONSOLIDATED_WARM_START_UPDATES
             ),
             matchup_samplings=tuple(
                 args.matchup_sampling or CONSOLIDATED_MATCHUP_SAMPLINGS
@@ -401,7 +401,7 @@ def build_configs(args: argparse.Namespace) -> list[RunConfig]:
                 else None
             ),
             learning_rates=tuple(args.learning_rate or STRESS_LEARNING_RATES),
-            bootstrap_updates=(0,),
+            warm_start_updates=(0,),
             matchup_samplings=("per_episode",),
             reward_mode="combined_terminal",
             reward_presets=("current_baseline",),
@@ -418,7 +418,7 @@ def build_configs(args: argparse.Namespace) -> list[RunConfig]:
             updates=300,
             evaluation_games=None if args.skip_evaluation else 500,
             learning_rates=tuple(args.learning_rate or ("0.9",)),
-            bootstrap_updates=tuple(args.bootstrap_updates or (0,)),
+            warm_start_updates=tuple(args.warm_start_updates or (0,)),
             matchup_samplings=tuple(args.matchup_sampling or ("per_episode",)),
             reward_mode="dense_presa",
             reward_presets=tuple(
@@ -437,7 +437,7 @@ def build_configs(args: argparse.Namespace) -> list[RunConfig]:
             updates=300,
             evaluation_games=None if args.skip_evaluation else 100,
             learning_rates=tuple(args.learning_rate or MAIN_LEARNING_RATES),
-            bootstrap_updates=tuple(args.bootstrap_updates or BOOTSTRAP_UPDATES),
+            warm_start_updates=tuple(args.warm_start_updates or WARM_START_UPDATES),
             matchup_samplings=tuple(args.matchup_sampling or MATCHUP_SAMPLINGS),
             reward_mode="combined_terminal",
             reward_presets=("current_baseline",),
@@ -452,11 +452,11 @@ def build_configs(args: argparse.Namespace) -> list[RunConfig]:
         name="learning_rate",
         require_explicit=require_selection,
     )
-    bootstrap_updates = selected_int_values(
+    warm_start_updates = selected_int_values(
         phase=args.phase,
-        values=args.bootstrap_updates,
-        default=BOOTSTRAP_UPDATES,
-        name="bootstrap_updates",
+        values=args.warm_start_updates,
+        default=WARM_START_UPDATES,
+        name="warm_start_updates",
         require_explicit=require_selection,
     )
     matchup_samplings = selected_values(
@@ -477,7 +477,7 @@ def build_configs(args: argparse.Namespace) -> list[RunConfig]:
             updates=500,
             evaluation_games=None if args.skip_evaluation else 1000,
             learning_rates=learning_rates,
-            bootstrap_updates=bootstrap_updates,
+            warm_start_updates=warm_start_updates,
             matchup_samplings=matchup_samplings,
             reward_mode="combined_terminal",
             reward_presets=("current_baseline",),
@@ -496,7 +496,7 @@ def build_configs(args: argparse.Namespace) -> list[RunConfig]:
             updates=500,
             evaluation_games=None if args.skip_evaluation else 1000,
             learning_rates=learning_rates,
-            bootstrap_updates=bootstrap_updates,
+            warm_start_updates=warm_start_updates,
             matchup_samplings=matchup_samplings,
             reward_mode="combined_terminal",
             reward_presets=reward_presets,
@@ -514,7 +514,7 @@ def build_configs(args: argparse.Namespace) -> list[RunConfig]:
             updates=500,
             evaluation_games=None if args.skip_evaluation else 1000,
             learning_rates=learning_rates,
-            bootstrap_updates=bootstrap_updates,
+            warm_start_updates=warm_start_updates,
             matchup_samplings=matchup_samplings,
             reward_mode="dense_presa",
             reward_presets=dense_presets,
@@ -583,7 +583,7 @@ def main() -> None:
     )
     parser.add_argument("--learning-rate", action="append")
     parser.add_argument("--feature-set", action="append", choices=FEATURE_SETS)
-    parser.add_argument("--bootstrap-updates", action="append", type=int)
+    parser.add_argument("--warm-start-updates", action="append", type=int)
     parser.add_argument(
         "--matchup-sampling",
         action="append",
