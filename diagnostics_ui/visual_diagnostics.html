@@ -997,14 +997,14 @@
       <div class="capture-pile">
         <div class="pile-stack" id="pariPile"></div>
         <div class="pile-label">
-          <span>pari</span>
+          <span>Pari</span>
           <span class="pile-count" id="pariPileCount">0</span>
         </div>
       </div>
       <div class="capture-pile">
         <div class="pile-stack" id="dispariPile"></div>
         <div class="pile-label">
-          <span>dispari</span>
+          <span>Dispari</span>
           <span class="pile-count" id="dispariPileCount">0</span>
         </div>
       </div>
@@ -1190,6 +1190,12 @@
       return cards.map((card) => ({ ...card }));
     }
 
+    function teamLabel(team) {
+      if (team === "pari") return "Pari";
+      if (team === "dispari") return "Dispari";
+      return team ?? "-";
+    }
+
     function move(delta) {
       if (state.reportKind !== "decision" || !state.records.length) return;
       state.index = Math.min(state.records.length - 1, Math.max(0, state.index + delta));
@@ -1229,7 +1235,7 @@
       els.metaText.textContent = `${state.fileName} | learner P${state.ourPlayer} | ${record.seme_briscola} briscola`;
       els.policyLine.textContent = policyLineText();
       els.stepText.textContent = `Step ${state.index + 1}/${state.records.length} | trick ${obs.indice_presa} card ${obs.posizione_nella_presa + 1}/4 | P${record.giocatore_id}`;
-      els.finalText.textContent = `Final points: ${ourTeam}=${finalScore[ourTeam]}, ${opponentTeam}=${finalScore[opponentTeam]} | winner=${log.squadra_vincitrice}`;
+      els.finalText.textContent = `Final points: ${teamLabel(ourTeam)}=${finalScore[ourTeam]}, ${teamLabel(opponentTeam)}=${finalScore[opponentTeam]} | winner=${teamLabel(log.squadra_vincitrice)}`;
 
       renderBadges(record);
       renderOtherHands(record);
