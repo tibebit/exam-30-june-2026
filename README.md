@@ -90,3 +90,16 @@ jupyter notebook notebooks/01_training_evaluation_diagnostics_demo.ipynb
 
 The notebook loads archived checkpoints, runs evaluation tables, generates
 graphs, and opens diagnostic views.
+
+## AI Usage Disclosure
+
+AI tools were used only for auxiliary development and presentation tasks,
+including:
+
+- support in formatting comments and explanatory text;
+- assistance in generating plotting utilities and visualization scripts;
+- support in building the diagnostics workflow and the HTML
+  diagnostics interface.
+
+The implementation, experimental setup, and reported results were manually
+reviewed and verified.
